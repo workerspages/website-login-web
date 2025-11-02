@@ -12,8 +12,10 @@ on:
 env:
   REGISTRY_GHCR: ghcr.io
   REGISTRY_DOCKER: docker.io
-  IMAGE_NAME: ${{ github.repository }}
-  DOCKER_HUB_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/${{ github.repository }}
+  # Docker Hub仓库名（固定，不含用户名）
+  DOCKER_HUB_REPO: website-login
+  # Docker Hub完整镜像路径：从Secrets用户名 + 仓库名生成（yesyunxin/website-login）
+  DOCKER_HUB_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_HUB_REPO }}
 
 jobs:
   build-and-push:
@@ -28,11 +30,14 @@ jobs:
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
+        with:
+          platforms: linux/amd64,linux/arm64
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
       - name: Log in to GHCR
+        if: github.event_name != 'pull_request'  # PR仅构建，不推送
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY_GHCR }}
@@ -40,6 +45,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Log in to Docker Hub
+        if: github.event_name != 'pull_request'
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
@@ -50,24 +56,32 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            ${{ env.REGISTRY_GHCR }}/${{ env.IMAGE_NAME }}
+            # GHCR路径：ghcr.io/workerspages/website-login
+            ${{ env.REGISTRY_GHCR }}/${{ github.repository }}
+            # Docker Hub路径：docker.io/yesyunxin/website-login
             ${{ env.REGISTRY_DOCKER }}/${{ env.DOCKER_HUB_IMAGE }}
           tags: |
+            # 分支标签（如main）
             type=ref,event=branch
+            # Commit SHA标签
             type=sha
+            # latest标签，仅主分支
             type=raw,value=latest,enable={{is_default_branch}}
-            # 支持 main/branch/latest/commitSHA 多种标签
           labels: |
-            org.opencontainers.image.title=${{ env.IMAGE_NAME }}
+            org.opencontainers.image.title=website-login
+            org.opencontainers.image.description=Auto-login headless browser with Playwright and Cron
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.licenses=MIT
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
+          file: ./Dockerfile  # 确保指向正确Dockerfile
           platforms: linux/amd64,linux/arm64
-          push: true
+          push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          # 缓存优化
           cache-from: type=gha
           cache-to: type=gha,mode=max
