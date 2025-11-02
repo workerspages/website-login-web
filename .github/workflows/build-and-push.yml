@@ -58,7 +58,7 @@ jobs:
           images: |
             # GHCR路径：ghcr.io/workerspages/website-login
             ${{ env.REGISTRY_GHCR }}/${{ github.repository }}
-            # Docker Hub路径：docker.io/yesyunxin/website-login
+            # Docker Hub路径：docker.io/yesyunxin/website-login（env插值）
             ${{ env.REGISTRY_DOCKER }}/${{ env.DOCKER_HUB_IMAGE }}
           tags: |
             # 分支标签（如main）
