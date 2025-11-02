@@ -1,11 +1,22 @@
-# Headless Browser Auto-Login
+# Web Auto-Login Project
 
-一个基于Playwright的无头浏览器Docker项目，用于定时自动登录多个网站。支持环境变量自定义站点配置、选择器和独立Crontab。通过GitHub Actions自动构建镜像并推送至ghcr.io和Docker Hub。
+基于Playwright的Docker无头浏览器项目，定时自动登录多个网站，支持环境变量自定义Crontab和选择器。
 
-## 功能
-- 无头Chrome浏览器自动登录，支持CSS/XPath自定义字段。
-- 每个站点独立Crontab定时（环境变量定义）。
-- 智能元素查找（未提供选择器时自动匹配）。
-- 日志输出到/var/log/siteN.log。
+## 快速启动
+1. 克隆仓库：`git clone https://github.com/your-username/web-login`
+2. 构建：`docker build -t web-login .`
+3. 运行（示例一站点）：`docker run -d -e TZ=Asia/Shanghai -e SITE1_URL=... -e SITE1_CRONTAB="0 */6 * * *" web-login`
 
-## 目录结构
+## 环境变量
+- SITE1_URL=登录页URL
+- SITE1_USERNAME=用户名
+- SITE1_PASSWORD=密码
+- SITE1_CRONTAB=定时表达式 (e.g., "0 */6 * * *")
+- SITE1_USER_SELECTOR=用户名选择器 (可选)
+- ... (详见sites_config.py)
+
+日志：/var/log/site1.log
+
+## CI/CD
+推送main分支，Actions自动构建多架构镜像到ghcr.io和Docker Hub。
+Secrets: DOCKERHUB_USERNAME, DOCKERHUB_TOKEN。
