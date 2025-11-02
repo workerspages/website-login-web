@@ -66,9 +66,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: |
-            ${{ env.REGISTRY_GHCR }}/${{ github.repository }}
-            ${{ env.REGISTRY_DOCKER }}/${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_HUB_REPO }}
+          images: ${{ env.REGISTRY_GHCR }}/${{ github.repository }},${{ env.REGISTRY_DOCKER }}/${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_HUB_REPO }}
           tags: |
             type=ref,event=branch
             type=sha
