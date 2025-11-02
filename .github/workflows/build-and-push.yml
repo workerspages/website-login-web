@@ -5,15 +5,14 @@ on:
     branches:
       - main
   pull_request:
-    branches:
-      - main
+      branches:
+        - main
   workflow_dispatch:
 
 env:
   REGISTRY_GHCR: ghcr.io
   REGISTRY_DOCKER: docker.io
   DOCKER_HUB_REPO: website-login
-  DOCKER_HUB_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_HUB_REPO }}
 
 jobs:
   build-and-push:
@@ -54,8 +53,10 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
+            # GHCR: ghcr.io/workerspages/website-login
             ${{ env.REGISTRY_GHCR }}/${{ github.repository }}
-            ${{ env.REGISTRY_DOCKER }}/${{ env.DOCKER_HUB_IMAGE }}
+            # Docker Hub: docker.io/yesyunxin/website-login (动态用户名 + 静态repo)
+            ${{ env.REGISTRY_DOCKER }}/${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_HUB_REPO }}
           tags: |
             type=ref,event=branch
             type=sha
