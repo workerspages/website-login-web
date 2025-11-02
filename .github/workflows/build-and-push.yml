@@ -20,18 +20,15 @@ jobs:
     permissions:
       contents: read
       packages: write
-      # 添加：增强GHCR/Docker权限
       id-token: write
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          # 添加：token增强拉取（用GITHUB_TOKEN，避免权限不足）
           token: ${{ secrets.GITHUB_TOKEN }}
-          fetch-depth: 0  # 全历史，拉取完整上下文
+          fetch-depth: 0
 
-      # 新增调试步骤：验证checkout和文件存在
       - name: Debug: List files and verify context
         run: |
           echo "Current directory contents:"
@@ -85,12 +82,9 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
-          context: .  # 根目录上下文，确保包含Dockerfile和src/
+          context: .
           file: ./Dockerfile
           platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          # 临时禁用缓存：避免损坏层（成功后可恢复）
-          # cache-from: type=gha
-          # cache-to: type=gha,mode=max
