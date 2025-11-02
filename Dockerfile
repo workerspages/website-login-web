@@ -1,23 +1,21 @@
-FROM python:3.11-slim as builder
+FROM mcr.microsoft.com/playwright/python:v1.48.0-jammy
+
+# 安装Cron和必要工具
+RUN apt-get update && apt-get install -y cron && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-FROM python:3.11-slim
-
-# 安装Chromium和依赖
-RUN apt-get update && apt-get install -y \
-    chromium-browser \
-    && rm -rf /var/lib/apt/lists/*
-
-WORKDIR /app
-COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+# 复制源代码
 COPY src/ .
 
-# 定时任务，使用cron
-RUN apt-get update && apt-get install -y cron
-COPY crontab /etc/cron.d/crontab
-RUN chmod 0644 /etc/cron.d/crontab && crontab /etc/cron.d/crontab
+# 复制入口脚本
+COPY entrypoint.sh .
+RUN chmod +x entrypoint.sh login.py generate_crontab.py
 
-CMD ["cron", "-f"]
+# 创建日志目录
+RUN mkdir -p /var/log
+
+ENV PYTHONUNBUFFERED=1
+ENTRYPOINT ["./entrypoint.sh"]
