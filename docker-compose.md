@@ -7,7 +7,7 @@ version: "3.9"
 
 services:
   app:
-    image: your-registry/website-login:latest
+    image: ghcr.io/workerspages/website-login:latest
     container_name: website-login
     restart: unless-stopped
     depends_on:
