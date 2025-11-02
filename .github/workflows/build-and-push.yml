@@ -5,8 +5,8 @@ on:
     branches:
       - main
   pull_request:
-      branches:
-        - main
+    branches:
+      - main
   workflow_dispatch:
 
 env:
@@ -20,10 +20,27 @@ jobs:
     permissions:
       contents: read
       packages: write
+      # 添加：增强GHCR/Docker权限
+      id-token: write
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          # 添加：token增强拉取（用GITHUB_TOKEN，避免权限不足）
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0  # 全历史，拉取完整上下文
+
+      # 新增调试步骤：验证checkout和文件存在
+      - name: Debug: List files and verify context
+        run: |
+          echo "Current directory contents:"
+          ls -la
+          echo "Dockerfile content preview:"
+          head -20 Dockerfile || echo "Dockerfile missing!"
+          echo "src/ contents:"
+          ls -la src/ || echo "src/ missing!"
+          echo "Build context ready."
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -53,9 +70,7 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            # GHCR: ghcr.io/workerspages/website-login
             ${{ env.REGISTRY_GHCR }}/${{ github.repository }}
-            # Docker Hub: docker.io/yesyunxin/website-login (动态用户名 + 静态repo)
             ${{ env.REGISTRY_DOCKER }}/${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_HUB_REPO }}
           tags: |
             type=ref,event=branch
@@ -70,11 +85,12 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
-          context: .
+          context: .  # 根目录上下文，确保包含Dockerfile和src/
           file: ./Dockerfile
           platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          # 临时禁用缓存：避免损坏层（成功后可恢复）
+          # cache-from: type=gha
+          # cache-to: type=gha,mode=max
