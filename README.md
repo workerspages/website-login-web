@@ -106,6 +106,8 @@ docker run -d \
 | `SITE{i}_PASS_SELECTOR` | **是** | **网站{i}** 密码输入框的 CSS 选择器。 **示例**: `SITE1_PASS_SELECTOR="#password"` |
 | `SITE{i}_SUBMIT_SELECTOR` | **是** | **网站{i}** 登录/提交按钮的 CSS 选择器。 **示例**: `SITE1_SUBMIT_SELECTOR="input[name='commit']"` |
 | `SITE{i}_VERIFY_SELECTOR` | **是** | **网站{i}** 登录成功后页面的验证元素的 CSS 选择器。 **示例**: `SITE1_VERIFY_SELECTOR=".AppHeader-user .avatar"` (GitHub 登录后的用户头像) |
+|`SITE{i}_POST_LOGIN_CLICK_SELECTORS	`|**否 (Optional)	**|(支持连续点击) 一个或多个由分号 (;) 分隔的 CSS 选择器。<br><br>用法说明:<br> • 脚本会根据分号 (;) 分割字符串，得到一个操作列表。<br> • 列表中的选择器数量决定了总共的点击次数。操作完成后任务即停止。<br> • 脚本会严格按照顺序执行：等待10秒 -> 点击第1个选择器 -> 等待10秒 -> 点击第2个选择器 -> ... 直到所有操作完成。<br><br>示例 1 (点击 3 次后停止):<br>"selector1; selector2; selector3"<br><br>示例 2 (点击 4 次后停止):<br>"selector1; selector2; selector3; selector4"<br><br>实际场景示例 (关闭弹窗->签到->领奖):<br>"button#close-popup; button.daily-check-in; a#claim-reward"
+|
 
 ### 完整 `docker run` 示例
 
@@ -120,22 +122,33 @@ docker run -d \
   -e TELEGRAM_BOT_TOKEN="12345:ABC-DEF12345" \
   -e TELEGRAM_CHAT_ID="123456789" \
   \
-  # --- 网站 1: GitHub，每天凌晨 3:05 执行 ---
+  # --- 网站 1: 一个需要多步操作的签到网站 ---
   # 基础信息
-  -e SITE1_URL="https://github.com/login" \
-  -e SITE1_USER="YOUR_GITHUB_USERNAME" \
-  -e SITE1_PASS="YOUR_GITHUB_PASSWORD" \
-  -e SITE1_CRON="5 3 * * *" \
-  # 登录流程配置 (CSS Selectors)
-  -e SITE1_USER_SELECTOR="#login_field" \
-  -e SITE1_PASS_SELECTOR="#password" \
-  -e SITE1_SUBMIT_SELECTOR="input[name='commit']" \
-  -e SITE1_VERIFY_SELECTOR="img.avatar.circle" \
+  -e SITE1_URL="https://complex-site.com/login" \
+  -e SITE1_USER="my-complex-user" \
+  -e SITE1_PASS="my-complex-password" \
+  -e SITE1_CRON="0 10 * * *" \
+  # 登录流程配置
+  -e SITE1_USER_SELECTOR="#user" \
+  -e SITE1_PASS_SELECTOR="#pass" \
+  -e SITE1_SUBMIT_SELECTOR="button.login-btn" \
+  -e SITE1_VERIFY_SELECTOR="span.welcome-message" \
+  # (可选) 登录后连续点击操作：
+  # 本例中定义了3个选择器，因此机器人会执行3次点击操作后停止。
+  # 1. 等10秒, 点击关闭欢迎弹窗
+  # 2. 再等10秒, 点击“每日签到”按钮
+  # 3. 再等10秒, 点击“确认领取奖励”按钮
+  -e SITE1_POST_LOGIN_CLICK_SELECTORS="button.close-welcome-modal; a.daily-check-in-link; button#confirm-reward" \
   \
-  # --- 你可以继续添加 SITE2, SITE3 ... ---
-  # -e SITE2_URL="..." \
-  # -e SITE2_USER="..." \
-  # ... 等等
+  # --- 网站 2: GitHub (无登录后操作) ---
+  -e SITE2_URL="https://github.com/login" \
+  -e SITE2_USER="YOUR_GITHUB_USERNAME" \
+  -e SITE2_PASS="YOUR_GITHUB_PASSWORD" \
+  -e SITE2_CRON="5 3 * * *" \
+  -e SITE2_USER_SELECTOR="#login_field" \
+  -e SITE2_PASS_SELECTOR="#password" \
+  -e SITE2_SUBMIT_SELECTOR="input[name='commit']" \
+  -e SITE2_VERIFY_SELECTOR="img.avatar.circle" \
   \
   # --- 指定要运行的 Docker 镜像 ---
   your-dockerhub-username/your-repo-name:latest
