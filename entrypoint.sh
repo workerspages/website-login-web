@@ -1,11 +1,24 @@
 #!/bin/sh
 
-# entrypoint.sh (最终修复版，使用 python3 命令)
+# entrypoint.sh (最终修复版，使用 python3 的绝对路径)
 
 echo "正在启动容器，开始动态生成 Cron 任务..."
 
 ENV_FILE="/app/environment.sh"
 CRON_FILE="/etc/cron.d/login-cron"
+
+# --- THE FINAL, DEFINITIVE FIX ---
+# 1. 自动查找 python3 可执行文件的完整路径
+echo "正在查找 python3 的可执行路径..."
+PYTHON_EXECUTABLE=$(which python3)
+
+# 2. 检查是否找到了路径，如果没找到则报错退出，增加健壮性
+if [ -z "$PYTHON_EXECUTABLE" ]; then
+    echo "致命错误: 未能在系统中找到 python3 可执行文件。容器无法启动。"
+    exit 1
+fi
+echo "Python 可执行文件位于: ${PYTHON_EXECUTABLE}"
+# -----------------------------------
 
 echo "正在将环境变量写入到 ${ENV_FILE}..."
 printenv | grep -E '^(SITE|TELEGRAM|TZ)' \
@@ -38,10 +51,9 @@ while true; do
     fi
 
     echo "为 网站${i} 添加定时任务: ${cron_schedule}"
-
-    # --- THE FINAL FIX ---
-    # 将 'python' 修改为 'python3'，以匹配官方 Python 镜像提供的命令
-    echo "${cron_schedule} root . ${ENV_FILE} && python3 /app/main.py ${i} >> /var/log/cron.log 2>&1" >> "$CRON_FILE"
+    
+    # 3. 在生成 cron 命令时，使用 python3 的完整路径
+    echo "${cron_schedule} root . ${ENV_FILE} && ${PYTHON_EXECUTABLE} /app/main.py ${i} >> /var/log/cron.log 2>&1" >> "$CRON_FILE"
 
     i=$((i + 1))
 done
