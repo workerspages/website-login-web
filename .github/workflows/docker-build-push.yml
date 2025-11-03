@@ -43,8 +43,8 @@ jobs:
           context: .
           push: true
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/website-login:OK
-            ghcr.io/${{ github.repository_owner }}/website-login:OK
+            ${{ secrets.DOCKERHUB_USERNAME }}/website-login:latest
+            ghcr.io/${{ github.repository_owner }}/website-login:latest
           # 添加构建参数，例如代理
           # build-args: |
           #   HTTP_PROXY=http://your.proxy.com:port
