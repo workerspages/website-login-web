@@ -84,7 +84,7 @@ docker run -d \
 | :--- | :--- | :--- |
 | `TELEGRAM_BOT_TOKEN` | **是** | 你的 Telegram Bot Token。 |
 | `TELEGRAM_CHAT_ID` | **是** | 接收通知的 Telegram 用户或频道的 Chat ID。 |
-|TZ|否 (Optional)	|设置容器的系统时区。默认为 Asia/Shanghai (中国标准时间)。如果你的服务器在其他时区，或者你想使用其他时区的时间，可以覆盖此变量。例如：America/New_York 或 Europe/London。|
+| `TZ` | **否(可选)** |设置容器的系统时区。默认为 Asia/Shanghai (中国标准时间)。如果你的服务器在其他时区，或者你想使用其他时区的时间，可以覆盖此变量。例如：America/New_York 或 Europe/London。|
 
 ### 网站专属变量
 
@@ -94,6 +94,7 @@ docker run -d \
 
 | 变量名 | 是否必须 | 描述和示例 |
 | :--- | :--- | :--- |
+| `SITE{i}_NAME`| **否(可选)** | **网站{i}** 的自定义名称，用于在 Telegram 通知中显示，使其更易辨认。如果留空，则默认为 "网站{i}"。 示例: SITE1_NAME="我的青龙面板"|
 | `SITE{i}_URL` | **是** | **网站{i}** 的登录页面 URL。 **示例**: `SITE1_URL="https://github.com/login"` |
 | `SITE{i}_USER` | **是** | **网站{i}** 的登录用户名。 **示例**: `SITE1_USER="my-github-user"` |
 | `SITE{i}_PASS` | **是** | **网站{i}** 的登录密码。 **示例**: `SITE1_PASS="my-secret-password"` |
@@ -107,7 +108,7 @@ docker run -d \
 | `SITE{i}_PASS_SELECTOR` | **是** | **网站{i}** 密码输入框的 CSS 选择器。 **示例**: `SITE1_PASS_SELECTOR="#password"` |
 | `SITE{i}_SUBMIT_SELECTOR` | **是** | **网站{i}** 登录/提交按钮的 CSS 选择器。 **示例**: `SITE1_SUBMIT_SELECTOR="input[name='commit']"` |
 | `SITE{i}_VERIFY_SELECTOR` | **是** | **网站{i}** 登录成功后页面的验证元素的 CSS 选择器。 **示例**: `SITE1_VERIFY_SELECTOR=".AppHeader-user .avatar"` (GitHub 登录后的用户头像) |
-|`SITE{i}_POST_LOGIN_CLICK_SELECTORS	`|**否 (Optional)	**|(支持连续点击) 一个或多个由分号 (;) 分隔的 CSS 选择器。<br><br>用法说明:<br> • 脚本会根据分号 (;) 分割字符串，得到一个操作列表。<br> • 列表中的选择器数量决定了总共的点击次数。操作完成后任务即停止。<br> • 脚本会严格按照顺序执行：等待10秒 -> 点击第1个选择器 -> 等待10秒 -> 点击第2个选择器 -> ... 直到所有操作完成。<br><br>示例 1 (点击 3 次后停止):<br>"selector1; selector2; selector3"<br><br>示例 2 (点击 4 次后停止):<br>"selector1; selector2; selector3; selector4"<br><br>实际场景示例 (关闭弹窗->签到->领奖):<br>"button#close-popup; button.daily-check-in; a#claim-reward"
+| `SITE{i}_POST_LOGIN_CLICK_SELECTORS` | **否(可选)** | **网站{i}** (支持连续点击) 一个或多个由分号 (;) 分隔的 CSS 选择器。<br><br>用法说明:<br> • 脚本会根据分号 (;) 分割字符串，得到一个操作列表。<br> • 列表中的选择器数量决定了总共的点击次数。操作完成后任务即停止。<br> • 脚本会严格按照顺序执行：等待10秒 -> 点击第1个选择器 -> 等待10秒 -> 点击第2个选择器 -> ... 直到所有操作完成。<br><br>示例 1 (点击 3 次后停止):<br>"selector1; selector2; selector3"<br><br>示例 2 (点击 4 次后停止):<br>"selector1; selector2; selector3; selector4"<br><br>实际场景示例 (关闭弹窗->签到->领奖):<br>"button#close-popup; button.daily-check-in; a#claim-reward"
 |
 
 ### 完整 `docker run` 示例
@@ -125,6 +126,7 @@ docker run -d \
   \
   # --- 网站 1: 一个需要多步操作的签到网站 ---
   # 基础信息
+  -e SITE1_NAME="我的青龙面板"
   -e SITE1_URL="https://complex-site.com/login" \
   -e SITE1_USER="my-complex-user" \
   -e SITE1_PASS="my-complex-password" \
@@ -142,6 +144,7 @@ docker run -d \
   -e SITE1_POST_LOGIN_CLICK_SELECTORS="button.close-welcome-modal; a.daily-check-in-link; button#confirm-reward" \
   \
   # --- 网站 2: GitHub (无登录后操作) ---
+  -e SITE2_NAME="我的青龙面板"
   -e SITE2_URL="https://github.com/login" \
   -e SITE2_USER="YOUR_GITHUB_USERNAME" \
   -e SITE2_PASS="YOUR_GITHUB_PASSWORD" \
