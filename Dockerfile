@@ -1,13 +1,12 @@
-# Dockerfile (已修复 tzdata 安装问题)
+# Dockerfile (最终修复版，移除冗余的 playwright install)
 
-# 使用微软官方的 Playwright 镜像
+# 使用微软官方的 Playwright 镜像。
+# 它已经包含了 Python, Playwright 库, 和所有需要的浏览器。
 FROM mcr.microsoft.com/playwright/python:v1.48.0-jammy
 
-# 设置时区环境变量，供后续命令使用
+# 设置时区环境变量
 ENV TZ=Asia/Shanghai
-
-# 使用 ARG 设置 DEBIAN_FRONTEND，这可以防止 tzdata 包弹出交互式配置窗口
-# 这个 ARG 只在构建期间有效，不会保留在最终镜像中
+# 防止 tzdata 在安装时弹出交互式窗口
 ARG DEBIAN_FRONTEND=noninteractive
 
 # 设置工作目录
@@ -15,15 +14,13 @@ WORKDIR /app
 
 # 以非交互模式安装 cron 和 tzdata
 RUN apt-get update && apt-get install -y cron tzdata --no-install-recommends && \
-    # 配置系统时区
     ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone && \
-    # 清理 apt 缓存
     rm -rf /var/lib/apt/lists/*
 
-# 复制依赖文件并安装
+# 复制依赖文件并只安装 Python 包。
+# 不再需要 playwright install，因为浏览器已由基础镜像提供。
 COPY src/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt && \
-    playwright install --with-deps
+RUN pip install --no-cache-dir -r requirements.txt
 
 # 复制你的 Python 脚本和入口脚本
 COPY src/main.py .
