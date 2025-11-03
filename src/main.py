@@ -1,16 +1,12 @@
-# src/main.py (已更新，支持生成详细的失败步骤报告)
+# src/main.py (最终修复版，增加登录后等待页面加载)
 
 import os
 import sys
 import requests
 from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
 
-# --- Telegram 通知配置 (保持不变) ---
-TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
-TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
-
+# ... (send_telegram_notification 和其他函数保持不变)
 def send_telegram_notification(html_message):
-    # ... (此函数内容保持不变)
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
         print("警告：未配置 Telegram 的 BOT_TOKEN 或 CHAT_ID，跳过发送通知。")
         return
@@ -23,8 +19,8 @@ def send_telegram_notification(html_message):
     except Exception as e:
         print(f"发送 Telegram 通知时发生网络错误：{e}")
 
+
 def login_to_site(site_index):
-    # --- 变量加载 (保持不变) ---
     url = os.getenv(f'SITE{site_index}_URL')
     username = os.getenv(f'SITE{site_index}_USER')
     password = os.getenv(f'SITE{site_index}_PASS')
@@ -52,51 +48,47 @@ def login_to_site(site_index):
         try:
             page.goto(url, timeout=30000)
 
-            # --- 关键改动 (1): 为每个步骤增加独立的错误捕获 ---
-
-            # 步骤: 登录前点击
             if pre_login_selector:
                 print(f"执行登录前点击 (选择器: {pre_login_selector})")
                 try:
                     page.locator(pre_login_selector).click(timeout=15000)
                 except PlaywrightTimeoutError:
-                    return False, (f"<b>失败步骤:</b> 登录前点击\n"
-                                   f"<b>选择器:</b> <code>{pre_login_selector}</code>")
+                    return False, (f"<b>失败步骤:</b> 登录前点击\n<b>选择器:</b> <code>{pre_login_selector}</code>")
 
-            # 步骤: 填写用户名
             print(f"1. 填写用户名 (选择器: {user_selector})")
             try:
                 page.locator(user_selector).fill(username, timeout=15000)
             except PlaywrightTimeoutError:
-                return False, (f"<b>失败步骤:</b> 填写用户名\n"
-                               f"<b>选择器:</b> <code>{user_selector}</code>")
+                return False, (f"<b>失败步骤:</b> 填写用户名\n<b>选择器:</b> <code>{user_selector}</code>")
 
-            # 步骤: 填写密码
             print(f"2. 填写密码 (选择器: {pass_selector})")
             try:
                 page.locator(pass_selector).fill(password, timeout=15000)
             except PlaywrightTimeoutError:
-                return False, (f"<b>失败步骤:</b> 填写密码\n"
-                               f"<b>选择器:</b> <code>{pass_selector}</code>")
+                return False, (f"<b>失败步骤:</b> 填写密码\n<b>选择器:</b> <code>{pass_selector}</code>")
 
-            # 步骤: 点击登录按钮
             print(f"3. 点击登录按钮 (选择器: {submit_selector})")
             try:
                 page.locator(submit_selector).click(timeout=15000)
             except PlaywrightTimeoutError:
-                return False, (f"<b>失败步骤:</b> 点击登录按钮\n"
-                               f"<b>选择器:</b> <code>{submit_selector}</code>")
+                return False, (f"<b>失败步骤:</b> 点击登录按钮\n<b>选择器:</b> <code>{submit_selector}</code>")
 
-            # 步骤: 验证登录成功
+            # --- THE FINAL, DEFINITIVE FIX ---
+            # 在点击登录后，我们明确地、耐心地等待页面网络完全空闲，
+            # 这标志着所有跳转和动态内容加载都已完成。
+            print("   等待页面加载完成...")
+            page.wait_for_load_state('networkidle', timeout=40000) # 等待网络空闲，最长40秒
+            print("   页面已完全加载。")
+            # -----------------------------------
+
             print(f"4. 验证登录 (等待元素: {verify_selector})")
             try:
                 page.locator(verify_selector).wait_for(timeout=15000)
                 print("   验证成功！")
             except PlaywrightTimeoutError:
-                return False, (f"<b>失败步骤:</b> 验证登录成功\n"
-                               f"<b>选择器:</b> <code>{verify_selector}</code>")
+                return False, (f"<b>失败步骤:</b> 验证登录成功\n<b>选择器:</b> <code>{verify_selector}</code>")
             
-            # 步骤: 登录后点击
+            # ... (后续的 post-login click 逻辑保持不变)
             if post_login_selectors_str:
                 selectors_list = [s.strip() for s in post_login_selectors_str.split(';') if s.strip()]
                 if selectors_list:
@@ -107,8 +99,7 @@ def login_to_site(site_index):
                         try:
                             page.locator(selector).click(timeout=15000)
                         except PlaywrightTimeoutError:
-                            return False, (f"<b>失败步骤:</b> 登录后点击 #{i}\n"
-                                           f"<b>选择器:</b> <code>{selector}</code>")
+                            return False, (f"<b>失败步骤:</b> 登录后点击 #{i}\n<b>选择器:</b> <code>{selector}</code>")
                     success_msg = f"成功登录并执行了 {len(selectors_list)} 个登录后点击操作。"
                 else:
                     success_msg = "成功登录，未配置登录后操作。"
@@ -117,7 +108,6 @@ def login_to_site(site_index):
             return True, success_msg
 
         except Exception as e:
-            # 捕获其他未知错误
             error_message = f"发生未知错误: <code>{str(e)}</code>"
             page.screenshot(path=f"site_{site_index}_error.png")
             return False, error_message
@@ -125,7 +115,7 @@ def login_to_site(site_index):
             browser.close()
 
 def process_single_site(site_index):
-    # ... (此函数内容保持不变，它会自动接收并格式化我们生成的详细错误信息)
+    # ... (此函数内容保持不变)
     site_url = os.getenv(f'SITE{site_index}_URL')
     site_name = os.getenv(f'SITE{site_index}_NAME', f'网站{site_index}')
     success, message = login_to_site(site_index)
@@ -146,6 +136,7 @@ def process_single_site(site_index):
     print(html_report.replace("<b>", "").replace("</b>", "").replace("<code>", "").replace("</code>", ""))
     print("--------------------")
     send_telegram_notification(html_report)
+
 
 if __name__ == "__main__":
     # ... (此函数内容保持不变)
