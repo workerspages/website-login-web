@@ -1,4 +1,4 @@
-# src/main.py (最终版，增加了反-反爬虫伪装)
+# src/main.py (集所有修复于一身的最终版本)
 
 import os
 import sys
@@ -34,52 +34,38 @@ def login_to_site(site_index):
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True, args=["--no-sandbox"])
         try:
-            # --- 关键改动 (1): 创建带有伪装的浏览器上下文 ---
-            # 这个上下文将被后续的所有操作（无论是cookie模式还是form模式）使用
             print("正在应用反-反爬虫伪装...")
             context = browser.new_context(
-                # 设置一个真实的、常见的浏览器 User-Agent
                 user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36"
             )
-            # 在页面加载前运行脚本，隐藏我们的“机器人”身份
             context.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
             
             if auth_method == 'cookie':
-                # --- Cookie 认证流程 ---
+                # ... (cookie 逻辑保持不变)
                 if not cookie_str or not verify_selector:
                     return False, "Cookie 模式需要 <code>SITE{i}_COOKIE</code> 和 <code>SITE{i}_VERIFY_SELECTOR</code>。"
-
                 parsed_url = urlparse(url)
                 domain = parsed_url.netloc
-                
                 cookies = []
                 for cookie_pair in cookie_str.split(';'):
                     if '=' in cookie_pair:
                         name, value = cookie_pair.strip().split('=', 1)
                         cookies.append({'name': name, 'value': value, 'domain': domain, 'path': '/'})
-                
-                # --- 关键改动 (2): 在我们伪装好的 context 中添加 Cookie ---
                 context.add_cookies(cookies)
                 page = context.new_page()
-
                 page.goto(url, timeout=30000)
-                
                 print("Cookie 已注入，正在验证登录状态...")
                 try:
                     page.locator(verify_selector).wait_for(timeout=15000)
                     print("   验证成功！")
                     return True, "使用 Cookie 成功认证。"
                 except PlaywrightTimeoutError:
-                    return False, (f"<b>失败步骤:</b> 使用 Cookie 验证登录\n"
-                                   f"<b>选择器:</b> <code>{verify_selector}</code>")
+                    return False, (f"<b>失败步骤:</b> 使用 Cookie 验证登录\n<b>选择器:</b> <code>{verify_selector}</code>")
 
             else: # auth_method == 'form' (默认)
-                # --- 表单认证流程 ---
-                # --- 关键改动 (3): 从我们伪装好的 context 中创建页面 ---
                 page = context.new_page()
                 page.goto(url, timeout=30000)
 
-                # ... (所有表单填充和点击的逻辑保持完全不变)
                 username = os.getenv(f'SITE{site_index}_USER')
                 password = os.getenv(f'SITE{site_index}_PASS')
                 pre_login_selector = os.getenv(f'SITE{site_index}_PRE_LOGIN_CLICK_SELECTOR')
@@ -104,8 +90,13 @@ def login_to_site(site_index):
                 try: page.locator(submit_selector).click(timeout=15000)
                 except PlaywrightTimeoutError: return False, (f"<b>失败步骤:</b> 点击登录按钮\n<b>选择器:</b> <code>{submit_selector}</code>")
                 
-                page.wait_for_load_state('networkidle', timeout=20000)
+                # --- 关键改动: 融合我们针对 Nodeloc 问题的修复 ---
+                print("   等待页面结构加载完成...")
+                page.wait_for_load_state('domcontentloaded', timeout=20000)
+                print("   页面结构已加载。")
+                # -----------------------------------------------
                 
+                print(f"4. 验证登录 (等待元素: {verify_selector})")
                 try:
                     page.locator(verify_selector).wait_for(timeout=15000)
                     print("   验证成功！")
