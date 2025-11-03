@@ -1,29 +1,23 @@
-# src/main.py (已更新为发送 HTML 格式的通知)
+# src/main.py (已更新，支持登录前点击操作)
 
 import os
 import sys
 import requests
 from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
 
-# --- Telegram 通知配置 ---
+# --- Telegram 通知配置 (保持不变) ---
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
 
-# 移除了 Markdown 转义函数，因为我们不再使用它
-
 def send_telegram_notification(html_message):
-    """
-    发送 HTML 格式的消息到指定的 Telegram 频道。
-    """
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
         print("警告：未配置 Telegram 的 BOT_TOKEN 或 CHAT_ID，跳过发送通知。")
         return
-
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
     payload = {
         'chat_id': TELEGRAM_CHAT_ID,
         'text': html_message,
-        'parse_mode': 'HTML'  # --- 关键改动 (1): 将 parse_mode 设置为 HTML ---
+        'parse_mode': 'HTML'
     }
     try:
         response = requests.post(url, json=payload, timeout=10)
@@ -33,12 +27,13 @@ def send_telegram_notification(html_message):
         print(f"发送 Telegram 通知时发生网络错误：{e}")
 
 def login_to_site(site_index):
-    """
-    执行登录和点击操作，并返回一个简洁的结果消息。
-    """
     url = os.getenv(f'SITE{site_index}_URL')
     username = os.getenv(f'SITE{site_index}_USER')
     password = os.getenv(f'SITE{site_index}_PASS')
+    
+    # --- 新增：读取登录前点击的选择器 (可选) ---
+    pre_login_selector = os.getenv(f'SITE{site_index}_PRE_LOGIN_CLICK_SELECTOR')
+    
     user_selector = os.getenv(f'SITE{site_index}_USER_SELECTOR')
     pass_selector = os.getenv(f'SITE{site_index}_PASS_SELECTOR')
     submit_selector = os.getenv(f'SITE{site_index}_SUBMIT_SELECTOR')
@@ -61,10 +56,29 @@ def login_to_site(site_index):
         page = browser.new_page()
         try:
             page.goto(url, timeout=30000)
+
+            # --- 新增：处理登录前点击 ---
+            if pre_login_selector:
+                print(f"检测到登录前点击任务，执行点击 (选择器: {pre_login_selector})")
+                page.locator(pre_login_selector).click()
+                # 点击后，页面元素可能需要一点时间加载，Playwright的自动等待通常能处理好
+                print("   登录前点击已完成。")
+
+            print(f"1. 查找用户名输入框 (选择器: {user_selector})")
             page.locator(user_selector).fill(username)
+            print("   已输入用户名。")
+
+            print(f"2. 查找密码输入框 (选择器: {pass_selector})")
             page.locator(pass_selector).fill(password)
+            print("   已输入密码。")
+
+            print(f"3. 查找并点击登录按钮 (选择器: {submit_selector})")
             page.locator(submit_selector).click()
+            print("   已点击登录按钮。")
+
+            print(f"4. 验证登录成功 (等待元素: {verify_selector})")
             page.locator(verify_selector).wait_for(timeout=15000)
+            print("   验证元素已出现。登录成功！")
             
             if post_login_selectors_str:
                 selectors_list = [s.strip() for s in post_login_selectors_str.split(';') if s.strip()]
@@ -74,7 +88,6 @@ def login_to_site(site_index):
                         page.wait_for_timeout(30000)
                         print(f"   执行点击 (选择器: {selector})")
                         page.locator(selector).click()
-                    # --- 关键改动 (2): 返回更简洁的消息 ---
                     success_msg = f"成功登录并执行了 {len(selectors_list)} 个登录后点击操作。"
                 else:
                     success_msg = "成功登录，未配置登录后操作。"
@@ -93,25 +106,16 @@ def login_to_site(site_index):
             browser.close()
 
 def process_single_site(site_index):
-    """
-    处理单个网站任务，并构建美观的 HTML 通知消息。
-    """
-    # --- 关键改动 (3): 读取网站 URL 和自定义名称 ---
+    # ... (此函数内容保持不变)
     site_url = os.getenv(f'SITE{site_index}_URL')
-    # 如果没有设置 SITE{i}_NAME，就默认使用 "网站{i}"
     site_name = os.getenv(f'SITE{site_index}_NAME', f'网站{site_index}')
-
     success, message = login_to_site(site_index)
-
-    # --- 关键改动 (4): 根据任务结果构建 HTML 消息 ---
     if success:
         status_icon = "✅"
         status_text = "<b>任务成功</b>"
     else:
         status_icon = "❌"
         status_text = "<b>任务失败</b>"
-
-    # 使用 f-string 构建 HTML 模板
     html_report = (
         f"<b>- 定时登录任务报告 -</b>\n\n"
         f"{status_icon} {status_text}\n\n"
@@ -119,14 +123,13 @@ def process_single_site(site_index):
         f"<b>网站地址:</b> <code>{site_url}</code>\n\n"
         f"<b>详细信息:</b>\n{message}"
     )
-
     print("\n--- 登录任务报告 ---")
-    print(html_report.replace("<b>", "").replace("</b>", "").replace("<code>", "").replace("</code>", "")) # 打印纯文本版本
+    print(html_report.replace("<b>", "").replace("</b>", "").replace("<code>", "").replace("</code>", ""))
     print("--------------------")
     send_telegram_notification(html_report)
 
-
 if __name__ == "__main__":
+    # ... (此函数内容保持不变)
     if len(sys.argv) > 1:
         try:
             site_index_to_run = int(sys.argv[1])
