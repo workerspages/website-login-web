@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# entrypoint.sh (真正最终修复版)
+# entrypoint.sh (修复环境变量导出问题)
 
 echo "正在启动容器，开始动态生成 Cron 任务..."
 
@@ -8,22 +8,24 @@ ENV_FILE="/app/environment.sh"
 CRON_FILE="/etc/cron.d/login-cron"
 
 echo "正在将环境变量写入到 ${ENV_FILE}..."
-printenv | grep -E '^(SITE|TELEGRAM|TZ)' > "$ENV_FILE"
+# --- 关键改动在这里 ---
+# 我们使用 sed 在每一行的开头加上 'export '，以确保变量能被子进程继承
+printenv | grep -E '^(SITE|TELEGRAM|TZ)' | sed 's/^/export /' > "$ENV_FILE"
 chmod +r "$ENV_FILE"
+
+# 为了调试，我们打印出文件的内容，确认 'export' 已添加
+echo "--- environment.sh content (should start with 'export') ---"
+cat "$ENV_FILE"
+echo "--------------------------------------------------------"
 
 > "$CRON_FILE"
 
 i=1
 while true; do
-    # --- 关键改动在这里 ---
-    # 我们使用一种更安全的 eval 模式，只用它来间接获取变量的值，并赋给一个新变量。
-    # 这样可以避免在 echo 中执行复杂的、带特殊字符的字符串。
     cron_schedule_var_name="SITE${i}_CRON"
     site_url_var_name="SITE${i}_URL"
     
-    # 安全地获取 cron 计划字符串
     eval "cron_schedule=\$$cron_schedule_var_name"
-    # 安全地获取 URL 字符串
     eval "site_url=\$$site_url_var_name"
 
     if [ -z "$cron_schedule" ]; then
@@ -39,7 +41,6 @@ while true; do
 
     echo "为 网站${i} 添加定时任务: ${cron_schedule}"
 
-    # 在 echo 命令中，使用双引号将变量包围起来，确保特殊字符 (*) 不被扩展。
     echo "${cron_schedule} . ${ENV_FILE} && python /app/main.py ${i} >> /var/log/cron.log 2>&1" >> "$CRON_FILE"
 
     i=$((i + 1))
