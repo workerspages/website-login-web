@@ -49,3 +49,7 @@ jobs:
           # build-args: |
           #   HTTP_PROXY=http://your.proxy.com:port
           #   HTTPS_PROXY=http://your.proxy.com:port
+          # --- THE DEFINITIVE FIX ---
+          # --- THE DEFINITIVE FIX ---
+          # 强制进行一次干净的构建，不使用任何之前的缓存。
+          no-cache: true
