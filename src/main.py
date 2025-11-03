@@ -1,4 +1,4 @@
-# src/main.py (已更新，支持动态选择器)
+# src/main.py (已更新，支持登录后连续点击)
 
 import os
 import sys
@@ -26,7 +26,7 @@ def send_telegram_notification(message):
 
 def login_to_site(site_index):
     """
-    使用 Playwright 登录网站，所有关键参数和选择器均从环境变量动态加载。
+    使用 Playwright 登录网站，支持登录后执行一系列连续的点击操作。
     """
     site_name = f"网站{site_index}"
     
@@ -35,13 +35,15 @@ def login_to_site(site_index):
     username = os.getenv(f'SITE{site_index}_USER')
     password = os.getenv(f'SITE{site_index}_PASS')
     
-    # 新增：加载 CSS 选择器配置
     user_selector = os.getenv(f'SITE{site_index}_USER_SELECTOR')
     pass_selector = os.getenv(f'SITE{site_index}_PASS_SELECTOR')
     submit_selector = os.getenv(f'SITE{site_index}_SUBMIT_SELECTOR')
     verify_selector = os.getenv(f'SITE{site_index}_VERIFY_SELECTOR')
+    
+    # 新增：加载由分号分隔的连续点击选择器字符串
+    post_login_selectors_str = os.getenv(f'SITE{site_index}_POST_LOGIN_CLICK_SELECTORS')
 
-    # --- 验证所有必要的配置是否存在 ---
+    # --- 验证必要的配置是否存在 ---
     required_vars = {
         "URL": url, "USER": username, "PASS": password,
         "USER_SELECTOR": user_selector, "PASS_SELECTOR": pass_selector,
@@ -63,24 +65,43 @@ def login_to_site(site_index):
         try:
             page.goto(url, timeout=30000)
 
-            # --- 动态执行登录逻辑 ---
+            # ... (登录逻辑保持不变)
             print(f"1. 查找用户名输入框 (选择器: {user_selector})")
             page.locator(user_selector).fill(username)
             print("   已输入用户名。")
-
             print(f"2. 查找密码输入框 (选择器: {pass_selector})")
             page.locator(pass_selector).fill(password)
             print("   已输入密码。")
-
             print(f"3. 查找并点击登录按钮 (选择器: {submit_selector})")
             page.locator(submit_selector).click()
             print("   已点击登录按钮。")
-
             print(f"4. 验证登录成功 (等待元素: {verify_selector})")
             page.locator(verify_selector).wait_for(timeout=15000)
-            print("   验证元素已出现。")
+            print("   验证元素已出现。登录成功！")
             
-            success_msg = f"✅ 成功登录 {site_name}"
+            # --- 新增：执行登录后的连续点击操作 ---
+            if post_login_selectors_str:
+                # 按分号分割字符串，并去除每个选择器前后的空格
+                selectors_list = [s.strip() for s in post_login_selectors_str.split(';') if s.strip()]
+                
+                if selectors_list:
+                    print(f"检测到 {len(selectors_list)} 个登录后连续点击任务。")
+                    
+                    for i, selector in enumerate(selectors_list, 1):
+                        print(f"   ---步骤 {i}/{len(selectors_list)}---")
+                        print(f"   等待 10 秒...")
+                        page.wait_for_timeout(10000)
+                        
+                        print(f"   执行点击 (选择器: {selector})")
+                        page.locator(selector).click()
+                        print(f"   点击成功。")
+                    
+                    success_msg = f"✅ 成功登录 {site_name} 并执行了 {len(selectors_list)} 个登录后点击操作。"
+                else:
+                    success_msg = f"✅ 成功登录 {site_name}"
+            else:
+                success_msg = f"✅ 成功登录 {site_name}"
+
             print(success_msg)
             return True, success_msg
 
@@ -97,19 +118,15 @@ def login_to_site(site_index):
         finally:
             browser.close()
 
+# `process_single_site` 和 `if __name__ == "__main__"` 部分保持不变
 def process_single_site(site_index):
-    """处理单个指定的网站登录任务"""
-    # 注意：这里我们不再直接传递用户名密码，而是传递索引
-    # login_to_site 函数会自己从环境变量加载所有需要的信息
     success, message = login_to_site(site_index)
-    
     report_title = f"**定时登录任务报告 (网站{site_index})**"
     print("\n--- 登录任务报告 ---")
     print(message)
     print("--------------------")
     send_telegram_notification(f"{report_title}\n\n{message}")
 
-# if __name__ == "__main__": 部分保持不变
 if __name__ == "__main__":
     if len(sys.argv) > 1:
         try:
