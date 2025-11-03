@@ -1,4 +1,4 @@
-# src/main.py (已更新，支持登录前点击操作)
+# src/main.py (已更新，支持生成详细的失败步骤报告)
 
 import os
 import sys
@@ -10,15 +10,12 @@ TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
 
 def send_telegram_notification(html_message):
+    # ... (此函数内容保持不变)
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
         print("警告：未配置 Telegram 的 BOT_TOKEN 或 CHAT_ID，跳过发送通知。")
         return
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-    payload = {
-        'chat_id': TELEGRAM_CHAT_ID,
-        'text': html_message,
-        'parse_mode': 'HTML'
-    }
+    payload = {'chat_id': TELEGRAM_CHAT_ID, 'text': html_message, 'parse_mode': 'HTML'}
     try:
         response = requests.post(url, json=payload, timeout=10)
         if response.status_code != 200:
@@ -27,13 +24,11 @@ def send_telegram_notification(html_message):
         print(f"发送 Telegram 通知时发生网络错误：{e}")
 
 def login_to_site(site_index):
+    # --- 变量加载 (保持不变) ---
     url = os.getenv(f'SITE{site_index}_URL')
     username = os.getenv(f'SITE{site_index}_USER')
     password = os.getenv(f'SITE{site_index}_PASS')
-    
-    # --- 新增：读取登录前点击的选择器 (可选) ---
     pre_login_selector = os.getenv(f'SITE{site_index}_PRE_LOGIN_CLICK_SELECTOR')
-    
     user_selector = os.getenv(f'SITE{site_index}_USER_SELECTOR')
     pass_selector = os.getenv(f'SITE{site_index}_PASS_SELECTOR')
     submit_selector = os.getenv(f'SITE{site_index}_SUBMIT_SELECTOR')
@@ -57,29 +52,51 @@ def login_to_site(site_index):
         try:
             page.goto(url, timeout=30000)
 
-            # --- 新增：处理登录前点击 ---
+            # --- 关键改动 (1): 为每个步骤增加独立的错误捕获 ---
+
+            # 步骤: 登录前点击
             if pre_login_selector:
-                print(f"检测到登录前点击任务，执行点击 (选择器: {pre_login_selector})")
-                page.locator(pre_login_selector).click()
-                # 点击后，页面元素可能需要一点时间加载，Playwright的自动等待通常能处理好
-                print("   登录前点击已完成。")
+                print(f"执行登录前点击 (选择器: {pre_login_selector})")
+                try:
+                    page.locator(pre_login_selector).click(timeout=15000)
+                except PlaywrightTimeoutError:
+                    return False, (f"<b>失败步骤:</b> 登录前点击\n"
+                                   f"<b>选择器:</b> <code>{pre_login_selector}</code>")
 
-            print(f"1. 查找用户名输入框 (选择器: {user_selector})")
-            page.locator(user_selector).fill(username)
-            print("   已输入用户名。")
+            # 步骤: 填写用户名
+            print(f"1. 填写用户名 (选择器: {user_selector})")
+            try:
+                page.locator(user_selector).fill(username, timeout=15000)
+            except PlaywrightTimeoutError:
+                return False, (f"<b>失败步骤:</b> 填写用户名\n"
+                               f"<b>选择器:</b> <code>{user_selector}</code>")
 
-            print(f"2. 查找密码输入框 (选择器: {pass_selector})")
-            page.locator(pass_selector).fill(password)
-            print("   已输入密码。")
+            # 步骤: 填写密码
+            print(f"2. 填写密码 (选择器: {pass_selector})")
+            try:
+                page.locator(pass_selector).fill(password, timeout=15000)
+            except PlaywrightTimeoutError:
+                return False, (f"<b>失败步骤:</b> 填写密码\n"
+                               f"<b>选择器:</b> <code>{pass_selector}</code>")
 
-            print(f"3. 查找并点击登录按钮 (选择器: {submit_selector})")
-            page.locator(submit_selector).click()
-            print("   已点击登录按钮。")
+            # 步骤: 点击登录按钮
+            print(f"3. 点击登录按钮 (选择器: {submit_selector})")
+            try:
+                page.locator(submit_selector).click(timeout=15000)
+            except PlaywrightTimeoutError:
+                return False, (f"<b>失败步骤:</b> 点击登录按钮\n"
+                               f"<b>选择器:</b> <code>{submit_selector}</code>")
 
-            print(f"4. 验证登录成功 (等待元素: {verify_selector})")
-            page.locator(verify_selector).wait_for(timeout=15000)
-            print("   验证元素已出现。登录成功！")
+            # 步骤: 验证登录成功
+            print(f"4. 验证登录 (等待元素: {verify_selector})")
+            try:
+                page.locator(verify_selector).wait_for(timeout=15000)
+                print("   验证成功！")
+            except PlaywrightTimeoutError:
+                return False, (f"<b>失败步骤:</b> 验证登录成功\n"
+                               f"<b>选择器:</b> <code>{verify_selector}</code>")
             
+            # 步骤: 登录后点击
             if post_login_selectors_str:
                 selectors_list = [s.strip() for s in post_login_selectors_str.split(';') if s.strip()]
                 if selectors_list:
@@ -87,18 +104,20 @@ def login_to_site(site_index):
                         print(f"   等待 30 秒后执行点击 {i}/{len(selectors_list)}...")
                         page.wait_for_timeout(30000)
                         print(f"   执行点击 (选择器: {selector})")
-                        page.locator(selector).click()
+                        try:
+                            page.locator(selector).click(timeout=15000)
+                        except PlaywrightTimeoutError:
+                            return False, (f"<b>失败步骤:</b> 登录后点击 #{i}\n"
+                                           f"<b>选择器:</b> <code>{selector}</code>")
                     success_msg = f"成功登录并执行了 {len(selectors_list)} 个登录后点击操作。"
                 else:
                     success_msg = "成功登录，未配置登录后操作。"
             else:
                 success_msg = "成功登录，未配置登录后操作。"
             return True, success_msg
-        except PlaywrightTimeoutError:
-            error_message = "<b>超时或未找到元素。</b>\n请检查您的选择器配置是否正确。"
-            page.screenshot(path=f"site_{site_index}_error.png")
-            return False, error_message
+
         except Exception as e:
+            # 捕获其他未知错误
             error_message = f"发生未知错误: <code>{str(e)}</code>"
             page.screenshot(path=f"site_{site_index}_error.png")
             return False, error_message
@@ -106,7 +125,7 @@ def login_to_site(site_index):
             browser.close()
 
 def process_single_site(site_index):
-    # ... (此函数内容保持不变)
+    # ... (此函数内容保持不变，它会自动接收并格式化我们生成的详细错误信息)
     site_url = os.getenv(f'SITE{site_index}_URL')
     site_name = os.getenv(f'SITE{site_index}_NAME', f'网站{site_index}')
     success, message = login_to_site(site_index)
