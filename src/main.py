@@ -1,8 +1,8 @@
-# src/main.py (已更新，修复 Telegram Markdown 格式)
+# src/main.py (已更新等待时间为 30 秒)
 
 import os
 import sys
-import re # 导入正则表达式模块
+import re
 import requests
 from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
 
@@ -10,45 +10,34 @@ from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeo
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
 
-# --- 新增：Telegram Markdown V2 转义函数 ---
 def escape_markdown(text: str) -> str:
     """转义 Telegram Markdown V2 的特殊字符。"""
-    # 根据 Telegram API 文档，这些是需要转义的字符
     escape_chars = r'\_*[]()~`>#+-=|{}.!'
-    # 使用 re.sub() 进行安全的正则替换
     return re.sub(f'([{re.escape(escape_chars)}])', r'\\\1', text)
-
 
 def send_telegram_notification(message):
     """发送消息到指定的 Telegram 频道，并自动转义特殊字符。"""
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
         print("警告：未配置 Telegram 的 BOT_TOKEN 或 CHAT_ID，跳过发送通知。")
         return
-
-    # --- 关键改动在这里 ---
-    # 在发送前，对整个消息进行转义
     escaped_message = escape_markdown(message)
-
-    # 注意：Telegram API 文档推荐使用 MarkdownV2
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
     payload = {
         'chat_id': TELEGRAM_CHAT_ID,
         'text': escaped_message,
-        'parse_mode': 'MarkdownV2' # 使用更严格的 MarkdownV2 解析器
+        'parse_mode': 'MarkdownV2'
     }
     try:
         response = requests.post(url, json=payload, timeout=10)
         if response.status_code != 200:
-            # 打印 Telegram 返回的原始错误，方便调试
             print(f"发送 Telegram 通知失败：{response.text}")
     except Exception as e:
         print(f"发送 Telegram 通知时发生网络错误：{e}")
 
-
-# login_to_site, process_single_site, 和 if __name__ == "__main__" 部分
-# 无需任何修改，保持原样即可。
 def login_to_site(site_index):
-    # ... (此函数内容保持不变)
+    """
+    使用 Playwright 登录网站，支持登录后执行一系列连续的点击操作。
+    """
     site_name = f"网站{site_index}"
     url = os.getenv(f'SITE{site_index}_URL')
     username = os.getenv(f'SITE{site_index}_USER')
@@ -92,8 +81,11 @@ def login_to_site(site_index):
                     print(f"检测到 {len(selectors_list)} 个登录后连续点击任务。")
                     for i, selector in enumerate(selectors_list, 1):
                         print(f"   ---步骤 {i}/{len(selectors_list)}---")
-                        print(f"   等待 10 秒...")
-                        page.wait_for_timeout(10000)
+                        
+                        # --- 关键改动在这里 ---
+                        print(f"   等待 30 秒...")
+                        page.wait_for_timeout(30000) # 等待 30000 毫秒
+                        
                         print(f"   执行点击 (选择器: {selector})")
                         page.locator(selector).click()
                         print(f"   点击成功。")
@@ -119,7 +111,7 @@ def login_to_site(site_index):
 
 def process_single_site(site_index):
     success, message = login_to_site(site_index)
-    report_title = f"**定时登录任务报告 \\(网站{site_index}\\)**" # 注意：为了V2，括号也需要转义
+    report_title = f"**定时登录任务报告 \\(网站{site_index}\\)**"
     print("\n--- 登录任务报告 ---")
     print(message)
     print("--------------------")
@@ -136,4 +128,4 @@ if __name__ == "__main__":
             sys.exit(1)
     else:
         print("未提供特定网站参数，脚本退出。")
-        print("请通过 'python main.py 1' 的方式来测试单个网站。")
+        print("请通过 'python /app/main.py 1' 的方式来测试单个网站。")
