@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# entrypoint.sh (修复环境变量导出问题)
+# entrypoint.sh (修复变量值引用问题)
 
 echo "正在启动容器，开始动态生成 Cron 任务..."
 
@@ -9,12 +9,12 @@ CRON_FILE="/etc/cron.d/login-cron"
 
 echo "正在将环境变量写入到 ${ENV_FILE}..."
 # --- 关键改动在这里 ---
-# 我们使用 sed 在每一行的开头加上 'export '，以确保变量能被子进程继承
-printenv | grep -E '^(SITE|TELEGRAM|TZ)' | sed 's/^/export /' > "$ENV_FILE"
+# 使用 sed 查找第一个等号，并用双引号将等号后面的所有内容包围起来
+# 这可以防止 * 等特殊字符在 source 时被 shell 扩展
+printenv | grep -E '^(SITE|TELEGRAM|TZ)' | sed 's/=\(.*\)/="\1"/' | sed 's/^/export /' > "$ENV_FILE"
 chmod +r "$ENV_FILE"
 
-# 为了调试，我们打印出文件的内容，确认 'export' 已添加
-echo "--- environment.sh content (should start with 'export') ---"
+echo "--- environment.sh content (values should be quoted) ---"
 cat "$ENV_FILE"
 echo "--------------------------------------------------------"
 
@@ -40,9 +40,7 @@ while true; do
     fi
 
     echo "为 网站${i} 添加定时任务: ${cron_schedule}"
-
     echo "${cron_schedule} . ${ENV_FILE} && python /app/main.py ${i} >> /var/log/cron.log 2>&1" >> "$CRON_FILE"
-
     i=$((i + 1))
 done
 
