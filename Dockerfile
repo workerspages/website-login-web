@@ -1,61 +1,24 @@
-# Dockerfile (已更新并修复)
+# Dockerfile (使用 Playwright 镜像 - 大幅简化)
 
-# --- Stage 1: 构建环境 ---
-# 已更新: 使用更新的 Debian Bookworm 基础镜像，避免软件源问题
-FROM python:3.10-slim-bookworm AS builder
+# 使用微软官方的 Playwright 镜像
+# 它已经包含了 Python, Playwright 库, 和所有需要的浏览器
+FROM mcr.microsoft.com/playwright/python:v1.48.0-jammy
 
+# 设置工作目录
 WORKDIR /app
 
-# 安装系统依赖，Bookworm 源是正常的，所以 apt-get 可以直接工作
-RUN apt-get update && apt-get install -y \
-    wget \
-    gnupg \
-    unzip \
-    --no-install-recommends && \
-    rm -rf /var/lib/apt/lists/*
+# 安装 Cron
+# 镜像是基于 Ubuntu Jammy 的，所以我们还是需要安装 cron 服务
+RUN apt-get update && apt-get install -y cron --no-install-recommends && rm -rf /var/lib/apt/lists/*
 
-# 下载并安装 Google Chrome (这部分保持不变)
-RUN apt-get update && \
-    apt-get install -y software-properties-common && \
-    wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | gpg --dearmor -o /usr/share/keyrings/google-chrome-keyring.gpg && \
-    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-chrome-keyring.gpg] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list && \
-    apt-get update && \
-    apt-get install -y google-chrome-stable --no-install-recommends && \
-    rm -rf /var/lib/apt/lists/*
-
-# 下载并安装对应版本的 ChromeDriver (这部分保持不变)
-RUN CHROME_DRIVER_VERSION=$(wget -q -O - "https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions-with-downloads.json" | grep -oP '"linux64","url":"\K[^"]+' | sed 's|/chrome-linux64.zip||;s|.*/||' | head -n 1) && \
-    wget -O /tmp/chromedriver.zip "https://storage.googleapis.com/chrome-for-testing-public/${CHROME_DRIVER_VERSION}/linux64/chromedriver-linux64.zip" && \
-    unzip /tmp/chromedriver.zip -d /usr/local/bin/ && \
-    mv /usr/local/bin/chromedriver-linux64/chromedriver /usr/local/bin/ && \
-    rm -rf /tmp/chromedriver.zip /usr/local/bin/chromedriver-linux64
-
-# --- Stage 2: 运行环境 ---
-# 已更新: 同样使用 Bookworm 基础镜像保持一致
-FROM python:3.10-slim-bookworm
-
-WORKDIR /app
-
-# 从构建阶段复制 Chrome 和 ChromeDriver
-COPY --from=builder /usr/share/keyrings/google-chrome-keyring.gpg /usr/share/keyrings/google-chrome-keyring.gpg
-COPY --from=builder /etc/apt/sources.list.d/google-chrome.list /etc/apt/sources.list.d/google-chrome.list
-COPY --from=builder /usr/local/bin/chromedriver /usr/local/bin/chromedriver
-
-# 安装 Chrome 和 Cron
-RUN apt-get update && apt-get install -y \
-    google-chrome-stable \
-    cron \
-    --no-install-recommends && \
-    rm -rf /var/lib/apt/lists/*
-
-# 安装 Python 依赖
+# 复制依赖文件并安装
 COPY src/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# --system 参数确保 playwright 安装的浏览器在系统级别可用
+RUN pip install --no-cache-dir -r requirements.txt && \
+    playwright install --with-deps
 
-# 复制 Python 脚本
+# 复制你的 Python 脚本和入口脚本
 COPY src/main.py .
-
-# 复制入口脚本并赋予执行权限
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
