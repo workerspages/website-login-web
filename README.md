@@ -84,6 +84,7 @@ docker run -d \
 | :--- | :--- | :--- |
 | `TELEGRAM_BOT_TOKEN` | **是** | 你的 Telegram Bot Token。 |
 | `TELEGRAM_CHAT_ID` | **是** | 接收通知的 Telegram 用户或频道的 Chat ID。 |
+|TZ|否 (Optional)	|设置容器的系统时区。默认为 Asia/Shanghai (中国标准时间)。如果你的服务器在其他时区，或者你想使用其他时区的时间，可以覆盖此变量。例如：America/New_York 或 Europe/London。|
 
 ### 网站专属变量
 
@@ -149,6 +150,7 @@ docker run -d \
   -e SITE2_PASS_SELECTOR="#password" \
   -e SITE2_SUBMIT_SELECTOR="input[name='commit']" \
   -e SITE2_VERIFY_SELECTOR="img.avatar.circle" \
+  -e TZ=Asia/Shanghai
   \
   # --- 指定要运行的 Docker 镜像 ---
   your-dockerhub-username/your-repo-name:latest
