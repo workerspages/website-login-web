@@ -58,7 +58,7 @@
                             <div class="col-md-8 mb-2"><label class="form-label">登录URL*</label><input type="text" name="site{{ site.id }}_URL" class="form-control form-control-sm" value="{{ site.URL or '' }}"></div>
                             <div class="col-md-8 mb-2"><label class="form-label">CRON表达式*</label><input type="text" name="site{{ site.id }}_CRON" class="form-control form-control-sm" value="{{ site.CRON or '' }}"></div>
                             <div class="col-md-4 mb-2">
-                                <label class="form-label">认证方式</label>
+                                <label class="form-label">认证方式 (AUTH_METHOD)</label>
                                 <select name="site{{ site.id }}_AUTH_METHOD" class="form-select form-select-sm auth-method-select">
                                     <option value="form" {% if site.AUTH_METHOD == 'form' or not site.AUTH_METHOD %}selected{% endif %}>表单 (form)</option>
                                     <option value="cookie" {% if site.AUTH_METHOD == 'cookie' %}selected{% endif %}>Cookie</option>
@@ -71,10 +71,10 @@
                             <div class="row">
                                 <div class="col-md-6 mb-2"><label class="form-label">用户名 (USER)</label><input type="text" name="site{{ site.id }}_USER" class="form-control form-control-sm" value="{{ site.USER or '' }}"></div>
                                 <div class="col-md-6 mb-2"><label class="form-label">密码 (PASS)</label><input type="password" name="site{{ site.id }}_PASS" class="form-control form-control-sm" value="{{ site.PASS or '' }}"></div>
-                                <div class="col-12 mb-2"><label class="form-label">登录前点击选择器</label><input type="text" name="site{{ site.id }}_PRE_LOGIN_CLICK_SELECTOR" class="form-control form-control-sm" value="{{ site.PRE_LOGIN_CLICK_SELECTOR or '' }}"></div>
-                                <div class="col-md-6 mb-2"><label class="form-label">用户名选择器</label><input type="text" name="site{{ site.id }}_USER_SELECTOR" class="form-control form-control-sm" value="{{ site.USER_SELECTOR or '' }}"></div>
-                                <div class="col-md-6 mb-2"><label class="form-label">密码选择器</label><input type="text" name="site{{ site.id }}_PASS_SELECTOR" class="form-control form-control-sm" value="{{ site.PASS_SELECTOR or '' }}"></div>
-                                <div class="col-md-6 mb-2"><label class="form-label">提交按钮选择器</label><input type="text" name="site{{ site.id }}_SUBMIT_SELECTOR" class="form-control form-control-sm" value="{{ site.SUBMIT_SELECTOR or '' }}"></div>
+                                <div class="col-12 mb-2"><label class="form-label">登录前点击选择器 (PRE_LOGIN_CLICK_SELECTOR)</label><input type="text" name="site{{ site.id }}_PRE_LOGIN_CLICK_SELECTOR" class="form-control form-control-sm" value="{{ site.PRE_LOGIN_CLICK_SELECTOR or '' }}"></div>
+                                <div class="col-md-6 mb-2"><label class="form-label">用户名选择器 (USER_SELECTOR)</label><input type="text" name="site{{ site.id }}_USER_SELECTOR" class="form-control form-control-sm" value="{{ site.USER_SELECTOR or '' }}"></div>
+                                <div class="col-md-6 mb-2"><label class="form-label">密码选择器 (PASS_SELECTOR)</label><input type="text" name="site{{ site.id }}_PASS_SELECTOR" class="form-control form-control-sm" value="{{ site.PASS_SELECTOR or '' }}"></div>
+                                <div class="col-md-6 mb-2"><label class="form-label">提交按钮选择器 (SUBMIT_SELECTOR)</label><input type="text" name="site{{ site.id }}_SUBMIT_SELECTOR" class="form-control form-control-sm" value="{{ site.SUBMIT_SELECTOR or '' }}"></div>
                             </div>
                         </div>
 
@@ -87,8 +87,8 @@
 
                         <h6>通用参数</h6>
                         <div class="row">
-                            <div class="col-12 mb-2"><label class="form-label">登录成功验证选择器</label><input type="text" name="site{{ site.id }}_VERIFY_SELECTOR" class="form-control form-control-sm" value="{{ site.VERIFY_SELECTOR or '' }}"></div>
-                            <div class="col-12 mb-2"><label class="form-label">登录后点击选择器</label><input type="text" name="site{{ site.id }}_POST_LOGIN_CLICK_SELECTORS" class="form-control form-control-sm" value="{{ site.POST_LOGIN_CLICK_SELECTORS or '' }}"></div>
+                            <div class="col-12 mb-2"><label class="form-label">登录成功验证选择器 (VERIFY_SELECTOR)</label><input type="text" name="site{{ site.id }}_VERIFY_SELECTOR" class="form-control form-control-sm" value="{{ site.VERIFY_SELECTOR or '' }}"></div>
+                            <div class="col-12 mb-2"><label class="form-label">登录后点击选择器 (POST_LOGIN_CLICK_SELECTORS)</label><input type="text" name="site{{ site.id }}_POST_LOGIN_CLICK_SELECTORS" class="form-control form-control-sm" value="{{ site.POST_LOGIN_CLICK_SELECTORS or '' }}"></div>
                         </div>
                     </div>
                 </div>
@@ -168,10 +168,10 @@
                         <div class="row">
                             <div class="col-md-6 mb-2"><label class="form-label">用户名 (USER)</label><input type="text" name="site${newSiteId}_USER" class="form-control form-control-sm"></div>
                             <div class="col-md-6 mb-2"><label class="form-label">密码 (PASS)</label><input type="password" name="site${newSiteId}_PASS" class="form-control form-control-sm"></div>
-                            <div class="col-12 mb-2"><label class="form-label">登录前点击选择器</label><input type="text" name="site${newSiteId}_PRE_LOGIN_CLICK_SELECTOR" class="form-control form-control-sm"></div>
-                            <div class="col-md-6 mb-2"><label class="form-label">用户名选择器</label><input type="text" name="site${newSiteId}_USER_SELECTOR" class="form-control form-control-sm"></div>
-                            <div class="col-md-6 mb-2"><label class="form-label">密码选择器</label><input type="text" name="site${newSiteId}_PASS_SELECTOR" class="form-control form-control-sm"></div>
-                            <div class="col-md-6 mb-2"><label class="form-label">提交按钮选择器</label><input type="text" name="site${newSiteId}_SUBMIT_SELECTOR" class="form-control form-control-sm"></div>
+                            <div class="col-12 mb-2"><label class="form-label">登录前点击选择器 (PRE_LOGIN_CLICK_SELECTOR)</label><input type="text" name="site${newSiteId}_PRE_LOGIN_CLICK_SELECTOR" class="form-control form-control-sm"></div>
+                            <div class="col-md-6 mb-2"><label class="form-label">用户名选择器 (USER_SELECTOR)</label><input type="text" name="site${newSiteId}_USER_SELECTOR" class="form-control form-control-sm"></div>
+                            <div class="col-md-6 mb-2"><label class="form-label">密码选择器 (PASS_SELECTOR)</label><input type="text" name="site${newSiteId}_PASS_SELECTOR" class="form-control form-control-sm"></div>
+                            <div class="col-md-6 mb-2"><label class="form-label">提交按钮选择器 (SUBMIT_SELECTOR)</label><input type="text" name="site${newSiteId}_SUBMIT_SELECTOR" class="form-control form-control-sm"></div>
                         </div>
                     </div>
 
@@ -184,8 +184,8 @@
                     
                     <h6>通用参数</h6>
                     <div class="row">
-                        <div class="col-12 mb-2"><label class="form-label">登录成功验证选择器</label><input type="text" name="site${newSiteId}_VERIFY_SELECTOR" class="form-control form-control-sm"></div>
-                        <div class="col-12 mb-2"><label class="form-label">登录后点击选择器</label><input type="text" name="site${newSiteId}_POST_LOGIN_CLICK_SELECTORS" class="form-control form-control-sm"></div>
+                        <div class="col-12 mb-2"><label class="form-label">登录成功验证选择器 (VERIFY_SELECTOR)</label><input type="text" name="site${newSiteId}_VERIFY_SELECTOR" class="form-control form-control-sm"></div>
+                        <div class="col-12 mb-2"><label class="form-label">登录后点击选择器 (POST_LOGIN_CLICK_SELECTORS)</label><input type="text" name="site${newSiteId}_POST_LOGIN_CLICK_SELECTORS" class="form-control form-control-sm"></div>
                     </div>
                 </div>
             </div>`;
