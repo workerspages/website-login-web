@@ -1,18 +1,38 @@
-# src/main.py (集所有修复于一身的最终版本)
-
+# src/main.py (新版: 从 config.json 读取配置)
 import os
 import sys
+import json
 import requests
 from urllib.parse import urlparse
 from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
 
-# ... (send_telegram_notification 函数保持不变)
-TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
-TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
+CONFIG_FILE = '/data/config.json'
+
+# 全局变量现在从函数内部加载
+TELEGRAM_BOT_TOKEN = None
+TELEGRAM_CHAT_ID = None
+
+def load_config():
+    """从 JSON 文件加载配置"""
+    global TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
+    try:
+        with open(CONFIG_FILE, 'r') as f:
+            config = json.load(f)
+        TELEGRAM_BOT_TOKEN = config.get('global', {}).get('TELEGRAM_BOT_TOKEN')
+        TELEGRAM_CHAT_ID = config.get('global', {}).get('TELEGRAM_CHAT_ID')
+        return config
+    except FileNotFoundError:
+        print(f"错误: 配置文件 {CONFIG_FILE} 未找到。")
+        sys.exit(1)
+    except json.JSONDecodeError:
+        print(f"错误: 配置文件 {CONFIG_FILE} 格式无效。")
+        sys.exit(1)
+
 def send_telegram_notification(html_message):
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
         print("警告：未配置 Telegram 的 BOT_TOKEN 或 CHAT_ID，跳过发送通知。")
         return
+    # ... (此函数其余部分保持不变)
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
     payload = {'chat_id': TELEGRAM_CHAT_ID, 'text': html_message, 'parse_mode': 'HTML'}
     try:
@@ -23,27 +43,31 @@ def send_telegram_notification(html_message):
         print(f"发送 Telegram 通知时发生网络错误：{e}")
 
 
-def login_to_site(site_index):
-    auth_method = os.getenv(f'SITE{site_index}_AUTH_METHOD', 'form').lower()
-    cookie_str = os.getenv(f'SITE{site_index}_COOKIE')
-    url = os.getenv(f'SITE{site_index}_URL')
-    verify_selector = os.getenv(f'SITE{site_index}_VERIFY_SELECTOR')
+def login_to_site(site_config):
+    """使用传入的站点配置字典进行登录"""
+    auth_method = site_config.get('AUTH_METHOD', 'form').lower()
+    cookie_str = site_config.get('COOKIE')
+    url = site_config.get('URL')
+    verify_selector = site_config.get('VERIFY_SELECTOR')
 
     print(f"开始尝试登录: {url} (模式: {auth_method})")
 
+    # ... (此函数内部的 Playwright 逻辑与旧版几乎完全相同)
+    # 只需要将所有的 os.getenv(f'SITE{i}_VAR') 替换为 site_config.get('VAR')
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True, args=["--no-sandbox"])
         try:
-            print("正在应用反-反爬虫伪装...")
+            # ... (context 创建部分不变)
             context = browser.new_context(
                 user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36"
             )
             context.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
-            
+
             if auth_method == 'cookie':
-                # ... (cookie 逻辑保持不变)
+                # ... (cookie 逻辑中的 os.getenv 替换为 site_config.get)
                 if not cookie_str or not verify_selector:
-                    return False, "Cookie 模式需要 <code>SITE{i}_COOKIE</code> 和 <code>SITE{i}_VERIFY_SELECTOR</code>。"
+                    return False, "Cookie 模式需要 <code>COOKIE</code> 和 <code>VERIFY_SELECTOR</code>。"
+                # ... (其余 cookie 逻辑不变)
                 parsed_url = urlparse(url)
                 domain = parsed_url.netloc
                 cookies = []
@@ -61,25 +85,27 @@ def login_to_site(site_index):
                     return True, "使用 Cookie 成功认证。"
                 except PlaywrightTimeoutError:
                     return False, (f"<b>失败步骤:</b> 使用 Cookie 验证登录\n<b>选择器:</b> <code>{verify_selector}</code>")
-
-            else: # auth_method == 'form' (默认)
+            else: # auth_method == 'form'
                 page = context.new_page()
                 page.goto(url, timeout=30000)
-
-                username = os.getenv(f'SITE{site_index}_USER')
-                password = os.getenv(f'SITE{site_index}_PASS')
-                pre_login_selector = os.getenv(f'SITE{site_index}_PRE_LOGIN_CLICK_SELECTOR')
-                user_selector = os.getenv(f'SITE{site_index}_USER_SELECTOR')
-                pass_selector = os.getenv(f'SITE{site_index}_PASS_SELECTOR')
-                submit_selector = os.getenv(f'SITE{site_index}_SUBMIT_SELECTOR')
                 
+                # 从 site_config 获取变量
+                username = site_config.get('USER')
+                password = site_config.get('PASS')
+                pre_login_selector = site_config.get('PRE_LOGIN_CLICK_SELECTOR')
+                user_selector = site_config.get('USER_SELECTOR')
+                pass_selector = site_config.get('PASS_SELECTOR')
+                submit_selector = site_config.get('SUBMIT_SELECTOR')
+                
+                # ... (表单验证和填充逻辑，使用上面获取的变量)
                 required_vars = {"USER": username, "PASS": password, "USER_SELECTOR": user_selector, 
                                  "PASS_SELECTOR": pass_selector, "SUBMIT_SELECTOR": submit_selector, 
                                  "VERIFY_SELECTOR": verify_selector}
                 missing_vars = [key for key, value in required_vars.items() if not value]
                 if missing_vars:
-                    return False, f"表单模式缺少环境变量: <code>{', '.join(missing_vars)}</code>"
+                    return False, f"表单模式缺少配置: <code>{', '.join(missing_vars)}</code>"
 
+                # ... (所有 Playwright 操作逻辑保持不变)
                 if pre_login_selector:
                     try: page.locator(pre_login_selector).click(timeout=15000)
                     except PlaywrightTimeoutError: return False, (f"<b>失败步骤:</b> 登录前点击\n<b>选择器:</b> <code>{pre_login_selector}</code>")
@@ -90,20 +116,14 @@ def login_to_site(site_index):
                 try: page.locator(submit_selector).click(timeout=15000)
                 except PlaywrightTimeoutError: return False, (f"<b>失败步骤:</b> 点击登录按钮\n<b>选择器:</b> <code>{submit_selector}</code>")
                 
-                # --- 关键改动: 融合我们针对 Nodeloc 问题的修复 ---
-                print("   等待页面结构加载完成...")
                 page.wait_for_load_state('domcontentloaded', timeout=20000)
-                print("   页面结构已加载。")
-                # -----------------------------------------------
-                
-                print(f"4. 验证登录 (等待元素: {verify_selector})")
+
                 try:
                     page.locator(verify_selector).wait_for(timeout=15000)
-                    print("   验证成功！")
                 except PlaywrightTimeoutError:
                     return False, (f"<b>失败步骤:</b> 验证登录成功\n<b>选择器:</b> <code>{verify_selector}</code>")
                 
-                post_login_selectors_str = os.getenv(f'SITE{site_index}_POST_LOGIN_CLICK_SELECTORS')
+                post_login_selectors_str = site_config.get('POST_LOGIN_CLICK_SELECTORS')
                 if post_login_selectors_str:
                     selectors_list = [s.strip() for s in post_login_selectors_str.split(';') if s.strip()]
                     if selectors_list:
@@ -117,29 +137,49 @@ def login_to_site(site_index):
         except Exception as e:
             error_message = f"发生未知错误: <code>{str(e)}</code>"
             if 'page' in locals():
-              page.screenshot(path=f"site_{site_index}_error.png")
+              # 从 site_config 中获取 id 来命名截图
+              site_index = site_config.get('id', 'unknown')
+              page.screenshot(path=f"/data/site_{site_index}_error.png")
             return False, error_message
         finally:
             browser.close()
 
+
 def process_single_site(site_index):
-    # ... (此函数内容保持不变)
-    site_url = os.getenv(f'SITE{site_index}_URL')
-    site_name = os.getenv(f'SITE{site_index}_NAME', f'网站{site_index}')
-    success, message = login_to_site(site_index)
-    if success: status_icon, status_text = "✅", "<b>任务成功</b>"
-    else: status_icon, status_text = "❌", "<b>任务失败</b>"
+    config = load_config()
+    target_site = None
+    for site in config.get('sites', []):
+        if site.get('id') == site_index:
+            target_site = site
+            break
+    
+    if not target_site:
+        print(f"错误：在 {CONFIG_FILE} 中未找到 ID 为 {site_index} 的网站配置。")
+        return
+
+    site_url = target_site.get('URL')
+    site_name = target_site.get('NAME', f'网站{site_index}')
+    
+    success, message = login_to_site(target_site)
+    
+    if success:
+        status_icon, status_text = "✅", "<b>任务成功</b>"
+    else:
+        status_icon, status_text = "❌", "<b>任务失败</b>"
+        
     html_report = (f"<b>- 定时登录任务报告 -</b>\n\n{status_icon} {status_text}\n\n"
                    f"<b>网站名称:</b> {site_name}\n<b>网站地址:</b> <code>{site_url}</code>\n\n"
                    f"<b>详细信息:</b>\n{message}")
+                   
     print(f"\n--- 登录任务报告 ---\n{html_report.replace('<b>', '').replace('</b>', '').replace('<code>', '').replace('</code>', '')}\n--------------------")
     send_telegram_notification(html_report)
 
+
 if __name__ == "__main__":
-    # ... (此函数内容保持不变)
     if len(sys.argv) > 1:
         try:
-            process_single_site(int(sys.argv[1]))
+            site_id_to_process = int(sys.argv[1])
+            process_single_site(site_id_to_process)
         except ValueError:
             sys.exit("错误：提供的参数不是一个有效的数字。")
     else:
