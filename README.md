@@ -1,305 +1,201 @@
 
-# 定时网站自动登录机器人 (Auto-Login Bot)
+# 定时网站自动登录机器人 (带 Web UI 管理面板)
 
-[![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/YOUR_USERNAME/YOUR_REPO_NAME/.github/workflows/docker-build-push.yml?branch=main)](https://github.com/YOUR_USERNAME/YOUR_REPO_NAME/actions)
+这是一个全自动、**通过 Web 界面轻松配置**的容器化网站定时登录机器人。它使用 Playwright 模拟真实的浏览器操作，通过 Cron 实现定时任务，并利用 Telegram Bot 发送登录结果通知。
 
-这是一个全自动的、**高度可配置**的、容器化的网站定时登录机器人。它使用 Playwright（无头浏览器）来模拟登录过程，通过 Cron 实现定时任务，并利用 Telegram Bot 发送登录结果通知。
+与原版最大的不同是，本项目**内置了一个现代化的 Web UI**，您可以在浏览器中完成所有网站的添加、修改和删除，无需再手动编辑环境变量或配置文件，极大地提升了易用性。
 
-**此项目的最大特点是不需要修改任何代码**。你可以通过设置环境变量来适配几乎所有拥有标准登录流程的网站。
+![项目截图](https://user-images.githubusercontent.com/12345/67890.png)  
+*(请替换为您的项目截图)*
+
+---
 
 ## ✨ 主要功能
 
-- **动态登录流程**：无需修改代码！通过环境变量定义登录所需的 **CSS 选择器**，适配不同网站的页面结构。
-- **动态定时任务**：支持为每个网站独立设置 Cron 表达式来定义执行时间。
-- **多网站支持**：可同时管理多个网站，配置完全通过环境变量隔离。
-- **强大的 Playwright 内核**：使用现代化的 Playwright 框架，比 Selenium 更快、更稳定，并内置智能等待机制。
-- **实时通知**：通过 Telegram Bot 即时推送每次登录任务的结果（成功或失败）。
-- **完全容器化**：使用官方 Playwright 镜像，简化了环境依赖，保证了跨平台的一致性。
-- **自动化 CI/CD**：集成 GitHub Actions，实现代码提交后自动构建和发布 Docker 镜像。
+-   **🖥️ Web 管理面板**: 在浏览器中直观地添加、编辑、删除和管理所有定时任务。
+-   **🔐 登录保护**: Web UI 受独立的用户名和密码保护，确保您的配置安全。
+-   **🔄 动态任务更新**: 在 Web UI 中保存配置后，系统会自动更新 Cron 定时任务，无需重启容器。
+-   **⚙️ 强大的 Playwright 内核**: 使用现代化的 Playwright 框架，比 Selenium 更稳定、更高效，并内置智能等待机制。
+-   **🔔 实时通知**: 通过 Telegram Bot 即时推送每次登录任务的结果（成功或失败）。
+-   **📦 完全容器化**: 使用 Docker 一键部署，屏蔽了复杂的环境依赖问题。
+-   **🚀 自动化 CI/CD**: 集成 GitHub Actions，实现代码提交后自动构建和发布 Docker 镜像。
+-   **💪 高度可配置**: 支持表单登录和 Cookie 登录两种模式，并可通过 CSS 选择器适配绝大多数网站的登录流程。
+-   **🖱️ 登录后操作**: 支持登录成功后，按顺序连续点击多个页面元素，轻松完成“签到”、“领奖”等组合操作。
 
-## 🚀 如何运作
+## 🚀 部署与运行 (快速开始)
 
-1.  当 Docker 容器启动时，入口脚本 `entrypoint.sh` 会执行。
-2.  该脚本会扫描所有以 `SITE{i}_...` 格式定义的环境变量。
-3.  对于每一个配置了 `_CRON` 时间表的网站，脚本会动态生成一条 `cron` 定时任务。
-4.  `cron` 服务随后启动，并在指定的时间触发 Python 脚本 `main.py`，并传入网站对应的序号作为参数。
-5.  `main.py` 脚本加载该序号对应的**所有环境变量**（包括 URL、账号、密码以及 CSS 选择器），执行一个完全由配置驱动的登录流程，并将结果通过 Telegram Bot 发送出去。
+部署本项目非常简单，推荐使用 `docker-compose`。
 
-## ⚙️ 使用说明
+### 步骤 1: 准备文件
 
-### 1. 克隆或 Fork 本仓库
+1.  克隆或下载本仓库到您的服务器上。
+    ```bash
+    git clone https://github.com/your-username/your-repo-name.git
+    cd your-repo-name
+    ```
+2.  在项目根目录（与 `Dockerfile` 同级）下，创建一个 `docker-compose.yml` 文件：
 
-首先，将此仓库 Fork 到你自己的 GitHub 账号下，或者直接克隆到本地。
+    ```yaml
+    # docker-compose.yml
+    version: '3.8'
 
-### 2. 获取目标网站的 CSS 选择器
+    services:
+      website-login:
+        image: ghcr.io/workerspages/website-login:latest # 建议替换为您自己构建的镜像
+        container_name: website-login
+        restart: unless-stopped
+        ports:
+          # 将容器的 8080 端口映射到您服务器的某个端口，例如 8080
+          # 格式: <服务器端口>:<容器端口>
+          - "8080:8080"
+        volumes:
+          # 挂载一个本地目录到容器的 /data 目录
+          # 用于持久化存储您的所有网站配置和错误截图
+          - ./data:/data
+        environment:
+          # --- Web UI 登录凭据 (请务必修改) ---
+          - WEB_USER=admin
+          - WEB_PASS=your_strong_password_123
 
-这是成功运行此项目的最关键一步。你需要找到目标网站登录页面上四个关键元素的 CSS 选择器：
+          # --- Flask 安全密钥 (请务必修改为一个随机长字符串) ---
+          # 可以使用命令 `python3 -c 'import secrets; print(secrets.token_hex(24))'` 生成
+          - FLASK_SECRET_KEY=your_very_long_random_secret_string
 
-1.  **用户名字段**
-2.  **密码字段**
-3.  **登录/提交按钮**
-4.  **一个只在登录成功后才会出现的元素** (用于验证登录是否成功，例如用户头像、欢迎语、仪表盘标题等)
+          # --- 容器默认时区 (也可以在 Web UI 中修改) ---
+          - TZ=Asia/Shanghai
+    ```
 
-**如何找到正确的选择器？**
-1.  在 Chrome/Edge/Firefox 浏览器中打开你的目标登录页面。
-2.  按下 `F12` 打开开发者工具。
-3.  点击工具栏左上角的 "元素选择" 图标（一个箭头指向方框）。
-4.  在页面上点击你想定位的元素（例如用户名输入框）。
-5.  在开发者工具的 "Elements" (元素) 面板中，右键点击高亮的代码行，选择 `Copy` -> `Copy selector`。
-6.  将复制的选择器保存下来，等下填入环境变量中。对上述四个关键元素重复此操作。
+### 步骤 2: 启动容器
 
-### 3. 配置 GitHub Actions Secrets
-
-为了让 GitHub Actions 能够自动推送镜像，你需要在你的 GitHub 仓库中设置以下 Secrets：
-
-进入 `Settings` -> `Secrets and variables` -> `Actions`，点击 `New repository secret`：
-
--   `DOCKERHUB_USERNAME`: 你的 Docker Hub 用户名。
--   `DOCKERHUB_TOKEN`: 你的 Docker Hub 访问令牌。
-
-### 4. 部署和运行
-
-将代码推送到 `main` 分支，GitHub Actions 会自动构建镜像。构建成功后，你可以在任何支持 Docker 的服务器上通过以下命令运行容器：
+在 `docker-compose.yml` 文件所在的目录下，运行以下命令启动容器：
 
 ```bash
-docker run -d \
-  --name my-login-bot \
-  --restart always \
-  # 在这里配置你的所有环境变量
-  # ... (见下方环境变量详解)
-  \
-  your-dockerhub-username/your-repo-name:latest
+docker-compose up -d
 ```
-*请将 `your-dockerhub-username/your-repo-name` 替换为你的实际镜像地址。*
+
+第一次启动时，Docker 会自动拉取或构建镜像。
+
+### 步骤 3: 开始配置
+
+1.  **访问 Web UI**: 打开浏览器，访问 `http://<您的服务器IP>:8080` (如果您修改了端口，请使用您设置的端口)。
+2.  **登录**: 使用您在 `docker-compose.yml` 中设置的 `WEB_USER` 和 `WEB_PASS` 登录。
+3.  **配置任务**:
+    *   在“全局配置”中填入您的 Telegram Bot Token 和 Chat ID。
+    *   点击“添加一个新网站”按钮。
+    *   在弹出的卡片中，填写该网站的所有登录信息（URL、Cron 表达式、认证方式、CSS 选择器等）。
+    *   重复此步骤以添加更多网站。
+4.  **保存**: 点击页面最下方的“保存所有配置并更新任务”按钮。系统将保存您的配置并立即应用新的定时任务。
+
+至此，您的自动登录机器人已经开始工作了！
 
 ---
 
-## 🔑 环境变量详解
+## 🔑 配置项详解 (Web UI)
 
-所有配置均通过环境变量注入容器，实现了代码与配置的分离。
+所有配置都在 Web UI 中完成，这里对每个字段进行详细说明。
 
-### 全局变量
+### 全局配置
 
-| 变量名 | 是否必须 | 描述 |
+| 字段名 | 是否必须 | 描述 |
 | :--- | :--- | :--- |
 | `TELEGRAM_BOT_TOKEN` | **是** | 你的 Telegram Bot Token。 |
 | `TELEGRAM_CHAT_ID` | **是** | 接收通知的 Telegram 用户或频道的 Chat ID。 |
-| `TZ` | **否(可选)** |设置容器的系统时区。默认为 Asia/Shanghai (中国标准时间)。如果你的服务器在其他时区，或者你想使用其他时区的时间，可以覆盖此变量。例如：America/New_York 或 Europe/London。|
+| `TZ` (时区) | 否 | 设置容器的系统时区，Cron 的执行时间以此为准。默认为 `Asia/Shanghai`。 |
 
-### 网站专属变量
+### 网站配置
 
-通过数字后缀 `{i}` (从 1 开始) 来定义多个网站。为每个网站配置一组完整的变量。
+每个网站都是一张独立的配置卡片。
 
 #### 基础信息
 
-| 变量名 | 是否必须 | 描述和示例 |
+| 字段名 | 是否必须 | 描述和示例 |
 | :--- | :--- | :--- |
-| `SITE{i}_NAME`| **否(可选)** | **网站{i}** 的自定义名称，用于在 Telegram 通知中显示，使其更易辨认。如果留空，则默认为 "网站{i}"。 示例: SITE1_NAME="我的青龙面板"|
-| `SITE{i}_URL` | **是** | **网站{i}** 的登录页面 URL。 **示例**: `SITE1_URL="https://github.com/login"` |
-| `SITE{i}_USER` | **是** | **网站{i}** 的登录用户名。 **示例**: `SITE1_USER="my-github-user"` |
-| `SITE{i}_PASS` | **是** | **网站{i}** 的登录密码。 **示例**: `SITE1_PASS="my-secret-password"` |
-| `SITE{i}_CRON` | **是** | **网站{i}** 的 Cron 定时表达式。 **示例**: `SITE1_CRON="0 5 * * *"` |
+| **名称 (NAME)** | 否 | 自定义名称，用于在 Telegram 通知中显示，使其更易辨认。 |
+| **登录URL\*** | **是** | 网站的登录页面 URL。 **示例**: `https://github.com/login` |
+| **CRON表达式\***| **是** | 定义任务的执行时间。**格式**: `分 时 日 月 周`。**示例**: `0 3 * * *` (每天凌晨3点)。 |
+| **认证方式** | **是** | 选择 `表单 (form)` 或 `Cookie`。界面会根据您的选择动态显示/隐藏对应的参数区域。 |
 
-#### 登录流程变量 (CSS Selectors)
+#### 表单登录参数 (当认证方式为 `form` 时)
 
-| 变量名 | 是否必须 | 描述和示例 |
+| 字段名 | 是否必须 | 描述 |
 | :--- | :--- | :--- |
-| `SITE{i}_USER_SELECTOR` | **是** | **网站{i}** 用户名输入框的 CSS 选择器。 **示例**: `SITE1_USER_SELECTOR="#login_field"` |
-| `SITE{i}_PASS_SELECTOR` | **是** | **网站{i}** 密码输入框的 CSS 选择器。 **示例**: `SITE1_PASS_SELECTOR="#password"` |
-| `SITE{i}_SUBMIT_SELECTOR` | **是** | **网站{i}** 登录/提交按钮的 CSS 选择器。 **示例**: `SITE1_SUBMIT_SELECTOR="input[name='commit']"` |
-| `SITE{i}_VERIFY_SELECTOR` | **是** | **网站{i}** 登录成功后页面的验证元素的 CSS 选择器。 **示例**: `SITE1_VERIFY_SELECTOR=".AppHeader-user .avatar"` (GitHub 登录后的用户头像) |
-| `SITE{i}_POST_LOGIN_CLICK_SELECTORS` | **否(可选)** | **网站{i}** (支持连续点击) 一个或多个由分号 (;) 分隔的 CSS 选择器。<br><br>用法说明:<br> • 脚本会根据分号 (;) 分割字符串，得到一个操作列表。<br> • 列表中的选择器数量决定了总共的点击次数。操作完成后任务即停止。<br> • 脚本会严格按照顺序执行：等待10秒 -> 点击第1个选择器 -> 等待10秒 -> 点击第2个选择器 -> ... 直到所有操作完成。<br><br>示例 1 (点击 3 次后停止):<br>"selector1; selector2; selector3"<br><br>示例 2 (点击 4 次后停止):<br>"selector1; selector2; selector3; selector4"<br><br>实际场景示例 (关闭弹窗->签到->领奖):<br>"button#close-popup; button.daily-check-in; a#claim-reward"
-|
+| **用户名 (USER)** | **是** | 登录账号。 |
+| **密码 (PASS)** | **是** | 登录密码。 |
+| **登录前点击选择器** | 否 | 用于点击页面上某个元素后才出现登录框的场景 (例如点击“登录”按钮)。 |
+| **用户名选择器** | **是** | 用户名输入框的 CSS 选择器。 |
+| **密码选择器** | **是** | 密码输入框的 CSS 选择器。 |
+| **提交按钮选择器** | **是** | 登录/提交按钮的 CSS 选择器。 |
 
-### 完整 `docker run` 示例
+#### Cookie 登录参数 (当认证方式为 `cookie` 时)
 
-以下示例配置了 **GitHub** 网站的自动登录，并包含了所有必需的选择器变量。
+| 字段名 | 是否必须 | 描述 |
+| :--- | :--- | :--- |
+| **COOKIE** | **是** | 从浏览器中获取的完整 Cookie 字符串。 |
 
-```bash
-docker run -d \
-  --name my-login-bot \
-  --restart always \
-  \
-  # --- 全局 Telegram 配置 ---
-  -e TELEGRAM_BOT_TOKEN="12345:ABC-DEF12345" \
-  -e TELEGRAM_CHAT_ID="123456789" \
-  \
-  # --- 网站 1: 一个需要多步操作的签到网站 ---
-  # 基础信息
-  -e SITE1_NAME="我的青龙面板"
-  -e SITE1_URL="https://complex-site.com/login" \
-  -e SITE1_USER="my-complex-user" \
-  -e SITE1_PASS="my-complex-password" \
-  -e SITE1_CRON="0 10 * * *" \
-  # 登录流程配置
-  -e SITE1_USER_SELECTOR="#user" \
-  -e SITE1_PASS_SELECTOR="#pass" \
-  -e SITE1_SUBMIT_SELECTOR="button.login-btn" \
-  -e SITE1_VERIFY_SELECTOR="span.welcome-message" \
-  # (可选) 登录后连续点击操作：
-  # 本例中定义了3个选择器，因此机器人会执行3次点击操作后停止。
-  # 1. 等10秒, 点击关闭欢迎弹窗
-  # 2. 再等10秒, 点击“每日签到”按钮
-  # 3. 再等10秒, 点击“确认领取奖励”按钮
-  -e SITE1_POST_LOGIN_CLICK_SELECTORS="button.close-welcome-modal; a.daily-check-in-link; button#confirm-reward" \
-  \
-  # --- 网站 2: GitHub (无登录后操作) ---
-  -e SITE2_NAME="我的青龙面板"
-  -e SITE2_URL="https://github.com/login" \
-  -e SITE2_USER="YOUR_GITHUB_USERNAME" \
-  -e SITE2_PASS="YOUR_GITHUB_PASSWORD" \
-  -e SITE2_CRON="5 3 * * *" \
-  -e SITE2_USER_SELECTOR="#login_field" \
-  -e SITE2_PASS_SELECTOR="#password" \
-  -e SITE2_SUBMIT_SELECTOR="input[name='commit']" \
-  -e SITE2_VERIFY_SELECTOR="img.avatar.circle" \
-  -e TZ=Asia/Shanghai
-  \
-  # --- 指定要运行的 Docker 镜像 ---
-  your-dockerhub-username/your-repo-name:latest
+#### 通用参数
+
+| 字段名 | 是否必须 | 描述和示例 |
+| :--- | :--- | :--- |
+| **登录成功验证选择器** | **是** | 一个**只在登录成功后才会出现**的元素的 CSS 选择器，用于判断任务是否成功。 **示例**: ` .user-avatar` (用户头像) |
+| **登录后点击选择器** | 否 | 支持按顺序连续点击。将多个 CSS 选择器用分号 (`;`) 分隔。<br>**应用场景**: 登录后需要先“关闭弹窗”，再点击“每日签到”。<br>**示例**: `#close-popup-btn; .daily-check-in-btn` |
+
+---
+
+## 🎯 如何获取 CSS 选择器？
+
+这是配置中最关键的一步。
+
+1.  在 Chrome/Edge/Firefox 浏览器中打开目标网站，并登录。
+2.  按下 `F12` 打开“开发者工具”。
+3.  点击工具栏左上角的“元素选择”图标（一个箭头指向方框）。
+4.  在页面上点击您想定位的元素（例如用户名输入框、登录按钮、或登录成功后的用户头像）。
+5.  在开发者工具的 "Elements" (元素) 面板中，右键点击高亮的代码行。
+6.  选择 `Copy` -> `Copy selector`。
+7.  将复制的内容粘贴到 Web UI 中对应的输入框即可。
+
+## 👨‍💻 开发者信息
+
+### 技术栈
+
+-   **后端**: Flask + Gunicorn
+-   **前端**: Bootstrap 5 + 原生 JavaScript
+-   **自动化核心**: Playwright
+-   **定时任务**: Cron
+-   **进程管理**: Supervisor
+-   **容器化**: Docker
+
+### 项目结构
+
+```
+.
+├── data/                  # (运行时生成) 持久化数据目录，存储 config.json 和截图
+├── src/                   # 核心 Python 脚本
+│   ├── main.py            # Playwright 登录执行脚本
+│   └── requirements.txt   # Python 依赖
+├── web/                   # Flask Web 应用
+│   ├── static/            # CSS 样式文件
+│   ├── templates/         # HTML 模板文件
+│   └── app.py             # Web 应用后端逻辑
+├── .github/workflows/     # GitHub Actions CI/CD 配置
+├── docker-compose.yml     # (需手动创建) Docker Compose 部署文件
+├── Dockerfile             # Docker 镜像构建文件
+├── entrypoint.sh          # 容器入口脚本，负责生成 Cron 任务
+└── supervisord.conf       # Supervisor 进程管理配置
 ```
 
-### ❗ 局限性
+### CI/CD
 
-这个通用配置方案可以覆盖绝大多数采用标准表单登录的网站。但对于以下复杂情况，可能仍然需要修改 `src/main.py` 代码：
-- 需要处理 **iFrame** 内的登录表单。
-- 登录流程包含多个步骤（例如，输入用户名后需要点击“下一步”才出现密码框）。
-- 存在复杂的 **CAPTCHA** 人机验证。
-- 登录按钮在输入账号密码前是禁用的。
----
+本项目已配置 GitHub Actions (`.github/workflows/docker-build-push.yml`)。当您将代码推送到 `main` 分支时，它会自动执行以下操作：
 
-当然。查找登录/提交按钮的 CSS 选择器是一个非常常见的任务，这里为你提供一个详细的、分步的图文指南，包含**简单方法**和**进阶方法**。
+1.  构建 Docker 镜像。
+2.  推送到 Docker Hub。
+3.  推送到 GitHub Container Registry (GHCR)。
 
-我们将以 **GitHub 的登录页面** (`https://github.com/login`) 作为实战示例。
+如果您 Fork 了本仓库，请在您的仓库 `Settings` -> `Secrets and variables` -> `Actions` 中设置以下 Secrets 以启用自动推送：
 
-### 工具准备
+-   `DOCKERHUB_USERNAME`: 您的 Docker Hub 用户名。
+-   `DOCKERHUB_TOKEN`: 您的 Docker Hub 访问令牌。
 
-你唯一需要的工具就是你的网页浏览器（推荐 Chrome, Firefox, 或 Edge）及其内置的**开发者工具**。
-
-- **打开开发者工具的快捷键**: 在页面上按 `F12` 键，或者右键点击页面任意位置，选择 “检查” (Inspect)。
-
----
-
-### 方法一：直接复制选择器 (最简单快捷)
-
-这个方法适用于大多数情况，可以快速得到一个可用的选择器。
-
-#### 步骤 1: 打开目标网页和开发者工具
-
-访问你要自动登录的网站，并按 `F12` 打开开发者工具。
-
-#### 步骤 2: 启动元素选择器
-
-在开发者工具的左上角，找到并点击一个看起来像 **“箭头指向方框”** 的图标。这个工具可以让你在页面上选择元素。
-
-
-
-#### 步骤 3: 在页面上点击登录按钮
-
-激活元素选择器后，将鼠标移动到登录按钮上，它会被高亮显示。**直接点击这个登录按钮**。
-
-
-
-点击后，开发者工具的 “元素 (Elements)” 面板会自动跳转并高亮显示该按钮对应的 HTML 代码。
-
-#### 步骤 4: 复制 CSS 选择器
-
-在下方高亮的 HTML 代码行上**右键点击**，在弹出的菜单中选择 `复制 (Copy)` -> `复制选择器 (Copy selector)`。
-
-
-
-现在，这个按钮的 CSS 选择器已经被复制到你的剪贴板里了！它可能看起来像这样：
-`#login > div.auth-form-body.mt-3 > form > div > input.btn.btn-primary.btn-block.js-sign-in-button`
-
-#### 步骤 5: (强烈推荐) 验证选择器
-
-在将这个选择器填入环境变量之前，最好先验证一下它是否能准确地定位到且**仅**定位到这一个按钮。
-
-1.  切换到开发者工具的 **“控制台 (Console)”** 标签页。
-2.  输入 `document.querySelectorAll('你的选择器')`，然后按回车。把 `'你的选择器'` 替换成你刚刚复制的内容。
-3.  **检查结果**:
-    *   **理想结果**: 如果返回一个包含 1 个元素的列表 ( `NodeList [input]` )，说明选择器是完美的，它准确且唯一地找到了那个按钮。
-    *   **错误结果**: 如果返回 `NodeList []` (空列表)，说明选择器是错的，没有找到任何元素。
-    *   **警惕结果**: 如果返回的列表包含超过 1 个元素，说明这个选择器不够精确，它匹配了页面上的多个元素，可能会点错按钮。
-
-
-
----
-
-### 方法二：手动编写更稳定、更简洁的选择器 (进阶推荐)
-
-有时自动复制的选择器过于复杂和脆弱（例如，它依赖于 HTML 的层级结构，一旦前端稍作修改就可能失效）。手动编写一个更具语义化的选择器会更加稳定。
-
-同样，先通过方法一的步骤 1-3 定位到按钮的 HTML 代码。这次我们不直接复制，而是**分析它的属性**。
-
-以 GitHub 的登录按钮为例，它的 HTML 如下：
-```html
-<input type="submit" name="commit" value="Sign in" class="btn btn-primary btn-block js-sign-in-button" data-disable-with="Signing in…" data-signin-label="Sign in" data-sso-label="Sign in with SSO" development="false">
-```
-
-我们可以寻找最能代表这个按钮的**唯一属性**。以下是编写选择器的优先顺序：
-
-1.  **`id` 属性 (最佳)**: 如果元素有 `id`，这是最好的选择，因为 `id` 在整个页面中必须是唯一的。
-    -   HTML: `<button id="login-submit-btn">登录</button>`
-    -   选择器: `#login-submit-btn`
-
-2.  **`name` 属性或唯一的 `class`**: 如果没有 `id`，一个具有描述性的 `name` 属性或一个独特的 `class` 名称也非常好。
-    -   GitHub 按钮有 `name="commit"`。这看起来很独特。
-    -   选择器: `input[name='commit']` (这是**属性选择器**，非常强大！)
-
-3.  **其他属性 (如 `type`, `data-testid`)**:
-    -   GitHub 按钮有 `type="submit"`。
-    -   选择器: `input[type='submit']` (注意：如果页面上有多个 `type="submit"` 的按钮，这个就不够精确了)
-    -   现代 web 应用经常使用 `data-testid` 或 `data-cy` 等属性用于自动化测试，这些是极好的选择器目标。
-    -   HTML: `<button data-testid="login-button">登录</button>`
-    -   选择器: `button[data-testid='login-button']`
-
-4.  **组合选择器**: 你可以组合标签名、类名和属性来增加唯一性。
-    -   选择器: `input.btn.btn-primary[name='commit']` (选择一个同时拥有这些 class 和 name 属性的 input 标签)
-
-#### GitHub 示例的最佳选择
-
-对于 GitHub 登录按钮，`input[name='commit']` 是一个非常棒的选择。它比自动生成的长选择器更简洁，也更不容易因为页面布局变化而失效。
-
-我们同样可以在控制台验证它：`document.querySelectorAll("input[name='commit']")`，你会发现它同样准确地找到了那一个按钮。
-
----
-
-### **最终的调试策略 (现在您可以自己完成了！)**
-
-您已经掌握了解决这个问题所需的所有知识。这是您调试和修复它的方法：
-
-1.  **一次只调试一个**：为了精确定位问题，请暂时简化您的 `SITE1_POST_LOGIN_CLICK_SELECTORS` 环境变量，让它**只包含第一个**您想点击的元素的选择器。
-
-2.  **重新获取选择器**：
-    *   手动登录您的目标网站。
-    *   导航到您希望机器人点击第一个按钮的那个页面。
-    *   按下 `F12` 打开开发者工具。
-    *   使用元素选择器工具，**重新**获取那个按钮的 CSS 选择器。
-
-3.  **寻找更健壮的选择器**：
-    *   **不要用自动复制的长选择器！** 它们非常脆弱。
-    *   请检查那个元素，它有没有一个**唯一的 `id`**？（例如 `id="daily-check-in-button"`）
-    *   它有没有一个**独特的、有意义的 `class`**？（例如 `class="check-in-btn"`）
-    *   它是不是一个包含**特定文本**的链接或按钮？（例如，按钮上写着“每日签到”）
-
-4.  **更新环境变量**：将您找到的新的、更简洁、更可靠的选择器更新到您部署平台的 `SITE1_POST_LOGIN_CLICK_SELECTORS` 变量中。
-
-5.  **重新部署并观察日志**：一旦第一个点击成功了，再把第二个选择器加到分号后面，然后重复这个过程。
-
-
-
-
-### 总结
-
-| 场景 | 推荐方法 | 步骤 |
-| :--- | :--- | :--- |
-| **快速尝试** | **直接复制** | `右键` -> `复制` -> `复制选择器` -> `在控制台验证` |
-| **追求稳定性和长期维护** | **手动编写** | `检查元素HTML` -> `寻找id, name, 或特殊属性` -> `编写简洁的选择器` -> `在控制台验证` |
-
-对于你的项目，将找到并验证过的**最佳选择器**（例如 `"input[name='commit']"`）填入 `SITE{i}_SUBMIT_SELECTOR` 环境变量中，你的自动化机器人就会变得非常稳定可靠。
-
-
-## 📄 License
+## 许可证
 
 本项目采用 [MIT License](LICENSE) 开源。
