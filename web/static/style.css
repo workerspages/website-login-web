@@ -1,0 +1,29 @@
+/* web/static/style.css */
+
+body {
+    background-color: #f8f9fa; /* 设置一个淡灰色背景 */
+}
+
+.card-header h5 {
+    margin-bottom: 0;
+}
+
+/* 让表单控件更紧凑一些 */
+.form-control-sm {
+    font-size: 0.85rem;
+    padding: 0.25rem 0.5rem;
+}
+
+/* 让表单标签字体加粗，但不要太大 */
+.form-label {
+    font-weight: 600;
+    margin-bottom: 0.3rem;
+}
+
+.card-body h6 {
+    margin-top: 1rem;
+    color: #0d6efd; /* 蓝色标题 */
+    border-bottom: 1px solid #eee;
+    padding-bottom: 0.5rem;
+    margin-bottom: 1rem;
+}
