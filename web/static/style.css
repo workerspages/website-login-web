@@ -68,7 +68,7 @@ body {
 
 /* 用于美化标签旁边的变量名 */
 .var-name {
-  font-size: 0.5em;      /* 字体大小为父标签的 50% */
+  font-size: 0.75em;      /* 字体大小为父标签的 70% */
   color: #6c757d;        /* Bootstrap 的二级文本颜色 (灰色) */
   margin-left: 0.5rem;    /* 与中文标签保持一点距离 */
   font-family: 'Courier New', Courier, monospace; /* 使用等宽字体，更有代码感 */
