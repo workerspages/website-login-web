@@ -1,29 +1,67 @@
-/* web/static/style.css */
+/* web/static/style.css (美化版) */
 
 body {
-    background-color: #f8f9fa; /* 设置一个淡灰色背景 */
+    background-color: #f4f7f9; /* 使用一个更柔和的浅灰色背景 */
 }
 
-.card-header h5 {
-    margin-bottom: 0;
+.container {
+    max-width: 1400px; /* 限制最大宽度，避免在大屏上过于分散 */
 }
 
-/* 让表单控件更紧凑一些 */
-.form-control-sm {
-    font-size: 0.85rem;
-    padding: 0.25rem 0.5rem;
+.page-header {
+    border-bottom: 1px solid #dee2e6;
+    padding-bottom: 1rem;
+    margin-bottom: 2rem !important;
 }
 
-/* 让表单标签字体加粗，但不要太大 */
-.form-label {
+/* 卡片样式优化 */
+.site-card {
+    border: 1px solid #e9ecef;
+    border-radius: 0.5rem; /* 更圆润的边角 */
+    transition: box-shadow .2s ease-in-out, transform .2s ease-in-out;
+    background-color: #fff;
+}
+
+.site-card:hover {
+    transform: translateY(-3px); /* 鼠标悬浮时轻微上移 */
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, .1); /* 增加更明显的阴影 */
+}
+
+.site-card .card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #e9ecef;
+    font-weight: 500;
+}
+
+/* 替代 <hr> 的区域标题样式 */
+.site-card .card-body h6 {
+    font-size: 0.9rem;
     font-weight: 600;
-    margin-bottom: 0.3rem;
+    color: #495057;
+    margin-top: 1.5rem;
+    margin-bottom: 1rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #f1f3f5; /* 使用非常浅的上边框作为分隔线 */
+}
+.site-card .card-body h6:first-of-type {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: none;
 }
 
-.card-body h6 {
-    margin-top: 1rem;
-    color: #0d6efd; /* 蓝色标题 */
-    border-bottom: 1px solid #eee;
-    padding-bottom: 0.5rem;
-    margin-bottom: 1rem;
+
+/* --- 核心：平滑动画效果 --- */
+.form-parameters,
+.cookie-parameters {
+    overflow: hidden;
+    transition: max-height 0.4s ease-in-out, opacity 0.3s ease-in-out;
+    max-height: 0; /* 默认折叠 */
+    opacity: 0;
+    visibility: hidden;
+}
+
+.visible {
+    max-height: 1000px; /* 一个足够大的值，确保内容能完全展开 */
+    opacity: 1;
+    visibility: visible;
 }
