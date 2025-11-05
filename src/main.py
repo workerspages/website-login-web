@@ -1,7 +1,8 @@
-# src/main.py (最终修复版: 增强了登录后点击的等待机制)
+# src/main.py (最终优化版: 模拟人类点击延迟)
 import os
 import sys
 import json
+import random
 import requests
 from urllib.parse import urlparse
 from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
@@ -143,10 +144,13 @@ def login_to_site(site_config):
                         try:
                             target_element = page.locator(selector)
                             target_element.wait_for(state='visible', timeout=30000)
-                            print(f"  > 元素已可见，执行点击操作...")
-                            target_element.click(timeout=15000)
-                            print(f"  > 点击操作 #{i} 完成。等待页面响应...")
-                            page.wait_for_timeout(3000) 
+                            print(f"  > 元素已可见，执行模拟人类点击...")
+                            
+                            human_like_delay = random.randint(100, 300)
+                            target_element.click(timeout=15000, delay=human_like_delay)
+
+                            print(f"  > 点击操作 #{i} 完成 (延迟: {human_like_delay}ms)。等待页面响应...")
+                            page.wait_for_timeout(3000)
                         except PlaywrightTimeoutError:
                             return False, (f"<b>失败步骤:</b> 登录后点击 #{i}\n<b>选择器:</b> <code>{selector}</code>\n<b>错误:</b> 等待元素可见超时。")
                     return True, f"成功登录并执行了 {len(selectors_list)} 个登录后点击操作。"
