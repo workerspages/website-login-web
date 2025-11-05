@@ -1,4 +1,4 @@
-# src/main.py (最终修复版: 自动修正 Cookie 的 sameSite 属性)
+# src/main.py (最终修复版: 自动补全 domain/path 并修正 sameSite)
 import os
 import sys
 import json
@@ -53,7 +53,7 @@ def login_to_site(site_config):
         browser = p.chromium.launch(headless=True, args=["--no-sandbox"])
         try:
             context = browser.new_context(
-                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36"
+                user_agent="Mozilla/5.g Roaming/Mozilla/Firefox/Profiles/44fvp041.default-release/cookies.sqlite0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36"
             )
             context.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
             
@@ -68,22 +68,35 @@ def login_to_site(site_config):
                 except json.JSONDecodeError:
                     return False, "<b>失败步骤:</b> 解析 Cookie\n<b>错误:</b> Cookie 格式无效，请输入一个有效的 JSON 数组或对象。"
                 
-                # --- (核心修复) ---
-                # 自动修正每个 Cookie 的 sameSite 属性，以兼容不同插件的导出格式
-                sanitized_cookies = []
+                # --- (终极修复：自动补全和修正 Cookie) ---
+                print("正在处理和净化 Cookie...")
+                parsed_url = urlparse(url)
+                base_domain = parsed_url.netloc
+                if base_domain.startswith('www.'):
+                    base_domain = base_domain[4:]
+                
+                final_cookies = []
                 for cookie in cookies:
+                    # 1. 自动补全 domain 和 path (如果缺失)
+                    if 'domain' not in cookie or not cookie['domain']:
+                        cookie['domain'] = f".{base_domain}"
+                        print(f"  > 为 Cookie '{cookie['name']}' 自动补全 domain: {cookie['domain']}")
+                    if 'path' not in cookie or not cookie['path']:
+                        cookie['path'] = '/'
+                        print(f"  > 为 Cookie '{cookie['name']}' 自动补全 path: {cookie['path']}")
+
+                    # 2. 自动修正 sameSite 大小写
                     if 'sameSite' in cookie and isinstance(cookie['sameSite'], str):
-                        # 将 "lax", "strict", "none" 转换为 "Lax", "Strict", "None"
                         capitalized_same_site = cookie['sameSite'].capitalize()
                         if capitalized_same_site in ['Lax', 'Strict', 'None']:
                             cookie['sameSite'] = capitalized_same_site
                         else:
-                            # 如果是无法识别的值, 为安全起见移除该键
-                            del cookie['sameSite']
-                    sanitized_cookies.append(cookie)
+                            del cookie['sameSite'] # 移除无法识别的值
+                    
+                    final_cookies.append(cookie)
                 # --- (修复结束) ---
 
-                context.add_cookies(sanitized_cookies) # 使用修正后的 Cookie 列表
+                context.add_cookies(final_cookies) # 使用最完美的 Cookie 列表
                 page = context.new_page()
                 page.goto(url, timeout=30000)
                 print("JSON Cookie 已注入，正在验证登录状态...")
