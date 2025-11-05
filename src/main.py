@@ -1,4 +1,4 @@
-# src/main.py (最终版: 同时支持 JSON 和字符串 Cookie)
+# src/main.py (最终修复版: 增强了登录后点击的等待机制)
 import os
 import sys
 import json
@@ -33,7 +33,7 @@ def send_telegram_notification(html_message):
     payload = {'chat_id': TELEGRAM_CHAT_ID, 'text': html_message, 'parse_mode': 'HTML'}
     try:
         response = requests.post(url, json=payload, timeout=10)
-        response.raise_for_status() # Will raise an exception for 4xx/5xx errors
+        response.raise_for_status()
     except Exception as e:
         print(f"发送 Telegram 通知时发生网络错误：{e}")
 
@@ -54,18 +54,17 @@ def login_to_site(site_config):
             )
             context.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
             
+            page = context.new_page()
+
             if auth_method == 'cookie':
                 if not cookie_input_str or not verify_selector:
                     return False, "Cookie 模式需要 <code>COOKIE</code> 和 <code>VERIFY_SELECTOR</code>。"
                 
                 final_cookies = []
                 parsed_url = urlparse(url)
-                # 确保 base_domain 是主域名，例如 '52pojie.cn' 而不是 'www.52pojie.cn'
                 base_domain = '.'.join(parsed_url.netloc.split('.')[-2:])
 
-                # --- (核心修改：智能判断 Cookie 格式) ---
                 try:
-                    # 优先尝试解析为 JSON (更完整、更可靠)
                     print("尝试将 Cookie 解析为 JSON 格式...")
                     cookies_from_json = json.loads(cookie_input_str)
                     if isinstance(cookies_from_json, dict):
@@ -73,49 +72,34 @@ def login_to_site(site_config):
                     
                     print("JSON 解析成功。正在净化和补全 Cookie...")
                     for cookie in cookies_from_json:
-                        # 自动补全 domain 和 path (如果缺失)
                         if 'domain' not in cookie or not cookie['domain']: cookie['domain'] = f".{base_domain}"
                         if 'path' not in cookie or not cookie['path']: cookie['path'] = '/'
-                        # 自动修正 sameSite 大小写
                         if 'sameSite' in cookie and isinstance(cookie['sameSite'], str):
                             capitalized = cookie['sameSite'].capitalize()
                             if capitalized in ['Lax', 'Strict', 'None']:
                                 cookie['sameSite'] = capitalized
                             else:
-                                del cookie['sameSite'] # 移除无法识别的值
+                                del cookie['sameSite']
                         final_cookies.append(cookie)
 
                 except json.JSONDecodeError:
-                    # 如果 JSON 解析失败，则回退到简单字符串格式
                     print("JSON 解析失败，回退到 key=value; 字符串格式解析...")
-                    cookie_pairs = cookie_input_str.split(';')
-                    for pair in cookie_pairs:
+                    for pair in cookie_input_str.split(';'):
                         if '=' in pair:
                             name, value = pair.strip().split('=', 1)
                             final_cookies.append({
-                                'name': name,
-                                'value': value,
-                                'domain': f".{base_domain}",
-                                'path': '/'
+                                'name': name, 'value': value,
+                                'domain': f".{base_domain}", 'path': '/'
                             })
-                # --- (修改结束) ---
 
                 if not final_cookies:
                     return False, "<b>失败步骤:</b> 解析 Cookie\n<b>错误:</b> 未能从输入中解析出任何有效的 Cookie。"
 
                 context.add_cookies(final_cookies)
-                page = context.new_page()
                 page.goto(url, timeout=30000)
                 print("Cookie 已注入，正在验证登录状态...")
-                try:
-                    page.locator(verify_selector).wait_for(timeout=15000)
-                    print("   验证成功！")
-                    return True, "使用 Cookie 成功认证。"
-                except PlaywrightTimeoutError:
-                    return False, (f"<b>失败步骤:</b> 使用 Cookie 验证登录\n<b>选择器:</b> <code>{verify_selector}</code>")
-
+            
             else: # auth_method == 'form'
-                page = context.new_page()
                 page.goto(url, timeout=30000)
                 username = site_config.get('USER')
                 password = site_config.get('PASS')
@@ -140,23 +124,34 @@ def login_to_site(site_config):
                 except PlaywrightTimeoutError: return False, (f"<b>失败步骤:</b> 填写密码\n<b>选择器:</b> <code>{pass_selector}</code>")
                 try: page.locator(submit_selector).click(timeout=15000)
                 except PlaywrightTimeoutError: return False, (f"<b>失败步骤:</b> 点击登录按钮\n<b>选择器:</b> <code>{submit_selector}</code>")
-                
-                page.wait_for_load_state('domcontentloaded', timeout=20000)
-                try:
-                    page.locator(verify_selector).wait_for(timeout=15000)
-                except PlaywrightTimeoutError:
-                    return False, (f"<b>失败步骤:</b> 验证登录成功\n<b>选择器:</b> <code>{verify_selector}</code>")
-                
-                post_login_selectors_str = site_config.get('POST_LOGIN_CLICK_SELECTORS')
-                if post_login_selectors_str:
-                    selectors_list = [s.strip() for s in post_login_selectors_str.split(';') if s.strip()]
-                    if selectors_list:
-                        for i, selector in enumerate(selectors_list, 1):
-                            page.wait_for_timeout(30000)
-                            try: page.locator(selector).click(timeout=15000)
-                            except PlaywrightTimeoutError: return False, (f"<b>失败步骤:</b> 登录后点击 #{i}\n<b>选择器:</b> <code>{selector}</code>")
-                        return True, f"成功登录并执行了 {len(selectors_list)} 个登录后点击操作。"
-                return True, "成功登录，未配置登录后操作。"
+            
+            # 步骤1: 验证登录 (所有模式共用)
+            try:
+                print(f"验证登录: 等待元素 '{verify_selector}' 出现...")
+                page.locator(verify_selector).wait_for(timeout=20000)
+                print("   验证成功！登录状态确认。")
+            except PlaywrightTimeoutError:
+                return False, (f"<b>失败步骤:</b> 验证登录成功\n<b>选择器:</b> <code>{verify_selector}</code>")
+            
+            # 步骤2: 执行登录后点击 (所有模式共用)
+            post_login_selectors_str = site_config.get('POST_LOGIN_CLICK_SELECTORS')
+            if post_login_selectors_str:
+                selectors_list = [s.strip() for s in post_login_selectors_str.split(';') if s.strip()]
+                if selectors_list:
+                    for i, selector in enumerate(selectors_list, 1):
+                        print(f"  > 准备执行登录后点击 #{i}: 等待元素 '{selector}' 变得可见且稳定...")
+                        try:
+                            target_element = page.locator(selector)
+                            target_element.wait_for(state='visible', timeout=30000)
+                            print(f"  > 元素已可见，执行点击操作...")
+                            target_element.click(timeout=15000)
+                            print(f"  > 点击操作 #{i} 完成。等待页面响应...")
+                            page.wait_for_timeout(3000) 
+                        except PlaywrightTimeoutError:
+                            return False, (f"<b>失败步骤:</b> 登录后点击 #{i}\n<b>选择器:</b> <code>{selector}</code>\n<b>错误:</b> 等待元素可见超时。")
+                    return True, f"成功登录并执行了 {len(selectors_list)} 个登录后点击操作。"
+            
+            return True, "成功登录，未配置登录后操作。"
                 
         except Exception as e:
             error_message = f"发生未知错误: <code>{str(e)}</code>"
