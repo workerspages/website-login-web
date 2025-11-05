@@ -1,4 +1,4 @@
-# src/main.py (新版: 从 config.json 读取配置)
+# src/main.py (新版: 支持 JSON Cookie)
 import os
 import sys
 import json
@@ -8,7 +8,6 @@ from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeo
 
 CONFIG_FILE = '/data/config.json'
 
-# 全局变量现在从函数内部加载
 TELEGRAM_BOT_TOKEN = None
 TELEGRAM_CHAT_ID = None
 
@@ -32,7 +31,6 @@ def send_telegram_notification(html_message):
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
         print("警告：未配置 Telegram 的 BOT_TOKEN 或 CHAT_ID，跳过发送通知。")
         return
-    # ... (此函数其余部分保持不变)
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
     payload = {'chat_id': TELEGRAM_CHAT_ID, 'text': html_message, 'parse_mode': 'HTML'}
     try:
@@ -44,52 +42,51 @@ def send_telegram_notification(html_message):
 
 
 def login_to_site(site_config):
-    """使用传入的站点配置字典进行登录"""
     auth_method = site_config.get('AUTH_METHOD', 'form').lower()
-    cookie_str = site_config.get('COOKIE')
+    cookie_json_str = site_config.get('COOKIE')
     url = site_config.get('URL')
     verify_selector = site_config.get('VERIFY_SELECTOR')
 
     print(f"开始尝试登录: {url} (模式: {auth_method})")
 
-    # ... (此函数内部的 Playwright 逻辑与旧版几乎完全相同)
-    # 只需要将所有的 os.getenv(f'SITE{i}_VAR') 替换为 site_config.get('VAR')
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True, args=["--no-sandbox"])
         try:
-            # ... (context 创建部分不变)
             context = browser.new_context(
                 user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36"
             )
             context.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
-
+            
             if auth_method == 'cookie':
-                # ... (cookie 逻辑中的 os.getenv 替换为 site_config.get)
-                if not cookie_str or not verify_selector:
+                if not cookie_json_str or not verify_selector:
                     return False, "Cookie 模式需要 <code>COOKIE</code> 和 <code>VERIFY_SELECTOR</code>。"
-                # ... (其余 cookie 逻辑不变)
-                parsed_url = urlparse(url)
-                domain = parsed_url.netloc
-                cookies = []
-                for cookie_pair in cookie_str.split(';'):
-                    if '=' in cookie_pair:
-                        name, value = cookie_pair.strip().split('=', 1)
-                        cookies.append({'name': name, 'value': value, 'domain': domain, 'path': '/'})
+                
+                # --- (核心修改点) ---
+                try:
+                    # 解析 JSON 字符串
+                    cookies = json.loads(cookie_json_str)
+                    # Playwright 需要一个 list, 即使只有一个 cookie, 也要确保是 list
+                    if isinstance(cookies, dict):
+                        cookies = [cookies]
+                except json.JSONDecodeError:
+                    return False, "<b>失败步骤:</b> 解析 Cookie\n<b>错误:</b> Cookie 格式无效，请输入一个有效的 JSON 数组或对象。"
+                # ---------------------
+
                 context.add_cookies(cookies)
                 page = context.new_page()
                 page.goto(url, timeout=30000)
-                print("Cookie 已注入，正在验证登录状态...")
+                print("JSON Cookie 已注入，正在验证登录状态...")
                 try:
                     page.locator(verify_selector).wait_for(timeout=15000)
                     print("   验证成功！")
-                    return True, "使用 Cookie 成功认证。"
+                    return True, "使用 JSON Cookie 成功认证。"
                 except PlaywrightTimeoutError:
                     return False, (f"<b>失败步骤:</b> 使用 Cookie 验证登录\n<b>选择器:</b> <code>{verify_selector}</code>")
+
             else: # auth_method == 'form'
+                # ... (表单登录逻辑保持不变)
                 page = context.new_page()
                 page.goto(url, timeout=30000)
-                
-                # 从 site_config 获取变量
                 username = site_config.get('USER')
                 password = site_config.get('PASS')
                 pre_login_selector = site_config.get('PRE_LOGIN_CLICK_SELECTOR')
@@ -97,7 +94,6 @@ def login_to_site(site_config):
                 pass_selector = site_config.get('PASS_SELECTOR')
                 submit_selector = site_config.get('SUBMIT_SELECTOR')
                 
-                # ... (表单验证和填充逻辑，使用上面获取的变量)
                 required_vars = {"USER": username, "PASS": password, "USER_SELECTOR": user_selector, 
                                  "PASS_SELECTOR": pass_selector, "SUBMIT_SELECTOR": submit_selector, 
                                  "VERIFY_SELECTOR": verify_selector}
@@ -105,7 +101,6 @@ def login_to_site(site_config):
                 if missing_vars:
                     return False, f"表单模式缺少配置: <code>{', '.join(missing_vars)}</code>"
 
-                # ... (所有 Playwright 操作逻辑保持不变)
                 if pre_login_selector:
                     try: page.locator(pre_login_selector).click(timeout=15000)
                     except PlaywrightTimeoutError: return False, (f"<b>失败步骤:</b> 登录前点击\n<b>选择器:</b> <code>{pre_login_selector}</code>")
@@ -137,14 +132,13 @@ def login_to_site(site_config):
         except Exception as e:
             error_message = f"发生未知错误: <code>{str(e)}</code>"
             if 'page' in locals():
-              # 从 site_config 中获取 id 来命名截图
               site_index = site_config.get('id', 'unknown')
               page.screenshot(path=f"/data/site_{site_index}_error.png")
             return False, error_message
         finally:
             browser.close()
 
-
+# ... (process_single_site 和 __main__ 部分保持不变)
 def process_single_site(site_index):
     config = load_config()
     target_site = None
