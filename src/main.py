@@ -1,4 +1,4 @@
-# src/main.py (新版: 支持 JSON Cookie)
+# src/main.py (最终修复版: 自动修正 Cookie 的 sameSite 属性)
 import os
 import sys
 import json
@@ -61,18 +61,29 @@ def login_to_site(site_config):
                 if not cookie_json_str or not verify_selector:
                     return False, "Cookie 模式需要 <code>COOKIE</code> 和 <code>VERIFY_SELECTOR</code>。"
                 
-                # --- (核心修改点) ---
                 try:
-                    # 解析 JSON 字符串
                     cookies = json.loads(cookie_json_str)
-                    # Playwright 需要一个 list, 即使只有一个 cookie, 也要确保是 list
                     if isinstance(cookies, dict):
                         cookies = [cookies]
                 except json.JSONDecodeError:
                     return False, "<b>失败步骤:</b> 解析 Cookie\n<b>错误:</b> Cookie 格式无效，请输入一个有效的 JSON 数组或对象。"
-                # ---------------------
+                
+                # --- (核心修复) ---
+                # 自动修正每个 Cookie 的 sameSite 属性，以兼容不同插件的导出格式
+                sanitized_cookies = []
+                for cookie in cookies:
+                    if 'sameSite' in cookie and isinstance(cookie['sameSite'], str):
+                        # 将 "lax", "strict", "none" 转换为 "Lax", "Strict", "None"
+                        capitalized_same_site = cookie['sameSite'].capitalize()
+                        if capitalized_same_site in ['Lax', 'Strict', 'None']:
+                            cookie['sameSite'] = capitalized_same_site
+                        else:
+                            # 如果是无法识别的值, 为安全起见移除该键
+                            del cookie['sameSite']
+                    sanitized_cookies.append(cookie)
+                # --- (修复结束) ---
 
-                context.add_cookies(cookies)
+                context.add_cookies(sanitized_cookies) # 使用修正后的 Cookie 列表
                 page = context.new_page()
                 page.goto(url, timeout=30000)
                 print("JSON Cookie 已注入，正在验证登录状态...")
@@ -84,7 +95,6 @@ def login_to_site(site_config):
                     return False, (f"<b>失败步骤:</b> 使用 Cookie 验证登录\n<b>选择器:</b> <code>{verify_selector}</code>")
 
             else: # auth_method == 'form'
-                # ... (表单登录逻辑保持不变)
                 page = context.new_page()
                 page.goto(url, timeout=30000)
                 username = site_config.get('USER')
@@ -138,7 +148,6 @@ def login_to_site(site_config):
         finally:
             browser.close()
 
-# ... (process_single_site 和 __main__ 部分保持不变)
 def process_single_site(site_index):
     config = load_config()
     target_site = None
@@ -167,7 +176,6 @@ def process_single_site(site_index):
                    
     print(f"\n--- 登录任务报告 ---\n{html_report.replace('<b>', '').replace('</b>', '').replace('<code>', '').replace('</code>', '')}\n--------------------")
     send_telegram_notification(html_report)
-
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
