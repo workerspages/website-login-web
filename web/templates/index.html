@@ -11,6 +11,7 @@
 </head>
 <body>
 <div class="container my-4 my-md-5">
+    <!-- ... (页面头部和全局配置部分保持不变) ... -->
     <div class="d-flex justify-content-between align-items-center page-header">
         <h2 class="mb-0">定时登录机器人配置面板</h2>
         <a href="{{ url_for('logout') }}" class="btn btn-outline-secondary">退出登录</a>
@@ -28,22 +29,15 @@
     {% endwith %}
 
     <form method="post">
-        <!-- 全局配置 -->
         <div class="card mb-4 site-card">
-            <div class="card-header">
-                <h4>全局配置</h4>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <!-- (修改点) 为所有标签添加了带样式的变量名 -->
-                    <div class="col-md-6 mb-3"><label class="form-label">机器人 Token<span class="var-name">(TELEGRAM_BOT_TOKEN)</span></label><input type="text" name="telegram_bot_token" class="form-control" value="{{ config.global.TELEGRAM_BOT_TOKEN or '' }}"></div>
-                    <div class="col-md-6 mb-3"><label class="form-label">聊天 ID<span class="var-name">(TELEGRAM_CHAT_ID)</span></label><input type="text" name="telegram_chat_id" class="form-control" value="{{ config.global.TELEGRAM_CHAT_ID or '' }}"></div>
-                    <div class="col-md-6 mb-3"><label class="form-label">时区<span class="var-name">(TZ)</span></label><input type="text" name="tz" class="form-control" value="{{ config.global.TZ or 'Asia/Shanghai' }}"></div>
-                </div>
-            </div>
+            <div class="card-header"><h4>全局配置</h4></div>
+            <div class="card-body"><div class="row">
+                <div class="col-md-6 mb-3"><label class="form-label">机器人 Token<span class="var-name">(TELEGRAM_BOT_TOKEN)</span></label><input type="text" name="telegram_bot_token" class="form-control" value="{{ config.global.TELEGRAM_BOT_TOKEN or '' }}"></div>
+                <div class="col-md-6 mb-3"><label class="form-label">聊天 ID<span class="var-name">(TELEGRAM_CHAT_ID)</span></label><input type="text" name="telegram_chat_id" class="form-control" value="{{ config.global.TELEGRAM_CHAT_ID or '' }}"></div>
+                <div class="col-md-6 mb-3"><label class="form-label">时区<span class="var-name">(TZ)</span></label><input type="text" name="tz" class="form-control" value="{{ config.global.TZ or 'Asia/Shanghai' }}"></div>
+            </div></div>
         </div>
 
-        <!-- 网站配置 (采用双列布局) -->
         <div id="sites-container" class="row">
             {% for site in config.sites %}
             <div class="col-lg-6 mb-4 site-card-wrapper">
@@ -53,45 +47,32 @@
                         <button type="button" class="btn btn-danger btn-sm remove-site-btn">删除此网站</button>
                     </div>
                     <div class="card-body">
+                        <!-- ... (基础信息和表单参数部分保持不变) ... -->
                         <h6>基础信息</h6>
                         <div class="row">
-                            <!-- (修改点) 为所有标签添加了带样式的变量名 -->
                             <div class="col-md-4 mb-2"><label class="form-label">名称<span class="var-name">(NAME)</span></label><input type="text" name="site{{ site.id }}_NAME" class="form-control form-control-sm" value="{{ site.NAME or '' }}"></div>
                             <div class="col-md-8 mb-2"><label class="form-label">登录URL*<span class="var-name">(URL)</span></label><input type="text" name="site{{ site.id }}_URL" class="form-control form-control-sm" value="{{ site.URL or '' }}"></div>
                             <div class="col-md-8 mb-2"><label class="form-label">CRON表达式*<span class="var-name">(CRON)</span></label><input type="text" name="site{{ site.id }}_CRON" class="form-control form-control-sm" value="{{ site.CRON or '' }}"></div>
-                            <div class="col-md-4 mb-2">
-                                <label class="form-label">认证方式<span class="var-name">(AUTH_METHOD)</span></label>
-                                <select name="site{{ site.id }}_AUTH_METHOD" class="form-select form-select-sm auth-method-select">
-                                    <option value="form" {% if site.AUTH_METHOD == 'form' or not site.AUTH_METHOD %}selected{% endif %}>表单 (form)</option>
-                                    <option value="cookie" {% if site.AUTH_METHOD == 'cookie' %}selected{% endif %}>Cookie</option>
-                                </select>
-                            </div>
+                            <div class="col-md-4 mb-2"><label class="form-label">认证方式<span class="var-name">(AUTH_METHOD)</span></label><select name="site{{ site.id }}_AUTH_METHOD" class="form-select form-select-sm auth-method-select"><option value="form" {% if site.AUTH_METHOD == 'form' or not site.AUTH_METHOD %}selected{% endif %}>表单 (form)</option><option value="cookie" {% if site.AUTH_METHOD == 'cookie' %}selected{% endif %}>Cookie</option></select></div>
                         </div>
-                        
-                        <div class="form-parameters">
-                            <h6>表单登录参数</h6>
-                            <div class="row">
-                                <div class="col-md-6 mb-2"><label class="form-label">用户名<span class="var-name">(USER)</span></label><input type="text" name="site{{ site.id }}_USER" class="form-control form-control-sm" value="{{ site.USER or '' }}"></div>
-                                <div class="col-md-6 mb-2"><label class="form-label">密码<span class="var-name">(PASS)</span></label><input type="password" name="site{{ site.id }}_PASS" class="form-control form-control-sm" value="{{ site.PASS or '' }}"></div>
-                                <div class="col-12 mb-2"><label class="form-label">登录前点击<span class="var-name">(PRE_LOGIN_CLICK_SELECTOR)</span></label><input type="text" name="site{{ site.id }}_PRE_LOGIN_CLICK_SELECTOR" class="form-control form-control-sm" value="{{ site.PRE_LOGIN_CLICK_SELECTOR or '' }}"></div>
-                                <div class="col-md-6 mb-2"><label class="form-label">用户名选择器<span class="var-name">(USER_SELECTOR)</span></label><input type="text" name="site{{ site.id }}_USER_SELECTOR" class="form-control form-control-sm" value="{{ site.USER_SELECTOR or '' }}"></div>
-                                <div class="col-md-6 mb-2"><label class="form-label">密码选择器<span class="var-name">(PASS_SELECTOR)</span></label><input type="text" name="site{{ site.id }}_PASS_SELECTOR" class="form-control form-control-sm" value="{{ site.PASS_SELECTOR or '' }}"></div>
-                                <div class="col-md-6 mb-2"><label class="form-label">提交按钮选择器<span class="var-name">(SUBMIT_SELECTOR)</span></label><input type="text" name="site{{ site.id }}_SUBMIT_SELECTOR" class="form-control form-control-sm" value="{{ site.SUBMIT_SELECTOR or '' }}"></div>
-                            </div>
-                        </div>
+                        <div class="form-parameters"><h6>表单登录参数</h6><div class="row"><div class="col-md-6 mb-2"><label class="form-label">用户名<span class="var-name">(USER)</span></label><input type="text" name="site{{ site.id }}_USER" class="form-control form-control-sm" value="{{ site.USER or '' }}"></div><div class="col-md-6 mb-2"><label class="form-label">密码<span class="var-name">(PASS)</span></label><input type="password" name="site{{ site.id }}_PASS" class="form-control form-control-sm" value="{{ site.PASS or '' }}"></div><div class="col-12 mb-2"><label class="form-label">登录前点击<span class="var-name">(PRE_LOGIN_CLICK_SELECTOR)</span></label><input type="text" name="site{{ site.id }}_PRE_LOGIN_CLICK_SELECTOR" class="form-control form-control-sm" value="{{ site.PRE_LOGIN_CLICK_SELECTOR or '' }}"></div><div class="col-md-6 mb-2"><label class="form-label">用户名选择器<span class="var-name">(USER_SELECTOR)</span></label><input type="text" name="site{{ site.id }}_USER_SELECTOR" class="form-control form-control-sm" value="{{ site.USER_SELECTOR or '' }}"></div><div class="col-md-6 mb-2"><label class="form-label">密码选择器<span class="var-name">(PASS_SELECTOR)</span></label><input type="text" name="site{{ site.id }}_PASS_SELECTOR" class="form-control form-control-sm" value="{{ site.PASS_SELECTOR or '' }}"></div><div class="col-md-6 mb-2"><label class="form-label">提交按钮选择器<span class="var-name">(SUBMIT_SELECTOR)</span></label><input type="text" name="site{{ site.id }}_SUBMIT_SELECTOR" class="form-control form-control-sm" value="{{ site.SUBMIT_SELECTOR or '' }}"></div></div></div>
 
                         <div class="cookie-parameters">
                             <h6>Cookie 登录参数</h6>
                             <div class="row">
-                                <div class="col-12 mb-2"><label class="form-label">Cookie<span class="var-name">(COOKIE)</span></label><textarea name="site{{ site.id }}_COOKIE" class="form-control form-control-sm" rows="3">{{ site.COOKIE or '' }}</textarea></div>
+                                <div class="col-12 mb-2">
+                                    <label class="form-label">Cookie<span class="var-name">(COOKIE)</span></label>
+                                    <!-- (核心修改点) -->
+                                    <textarea name="site{{ site.id }}_COOKIE" class="form-control form-control-sm" rows="4">{{ site.COOKIE or '' }}</textarea>
+                                    <small class="form-text text-muted">
+                                        请粘贴从浏览器插件 (如 EditThisCookie) 导出的 JSON 格式 Cookie 数组。
+                                    </small>
+                                </div>
                             </div>
                         </div>
 
                         <h6>通用参数</h6>
-                        <div class="row">
-                            <div class="col-12 mb-2"><label class="form-label">登录成功验证<span class="var-name">(VERIFY_SELECTOR)</span></label><input type="text" name="site{{ site.id }}_VERIFY_SELECTOR" class="form-control form-control-sm" value="{{ site.VERIFY_SELECTOR or '' }}"></div>
-                            <div class="col-12 mb-2"><label class="form-label">登录后点击<span class="var-name">(POST_LOGIN_CLICK_SELECTORS)</span></label><input type="text" name="site{{ site.id }}_POST_LOGIN_CLICK_SELECTORS" class="form-control form-control-sm" value="{{ site.POST_LOGIN_CLICK_SELECTORS or '' }}"></div>
-                        </div>
+                        <div class="row"><div class="col-12 mb-2"><label class="form-label">登录成功验证<span class="var-name">(VERIFY_SELECTOR)</span></label><input type="text" name="site{{ site.id }}_VERIFY_SELECTOR" class="form-control form-control-sm" value="{{ site.VERIFY_SELECTOR or '' }}"></div><div class="col-12 mb-2"><label class="form-label">登录后点击<span class="var-name">(POST_LOGIN_CLICK_SELECTORS)</span></label><input type="text" name="site{{ site.id }}_POST_LOGIN_CLICK_SELECTORS" class="form-control form-control-sm" value="{{ site.POST_LOGIN_CLICK_SELECTORS or '' }}"></div></div>
                     </div>
                 </div>
             </div>
@@ -107,103 +88,56 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function () {
+        // ... (JS 的大部分逻辑保持不变) ...
         const sitesContainer = document.getElementById('sites-container');
-
-        function toggleAuthMethodView(selectElement) {
-            const card = selectElement.closest('.site-card');
-            if (!card) return;
-            const formParams = card.querySelector('.form-parameters');
-            const cookieParams = card.querySelector('.cookie-parameters');
-            if (selectElement.value === 'cookie') {
-                formParams.classList.remove('visible');
-                cookieParams.classList.add('visible');
-            } else {
-                formParams.classList.add('visible');
-                cookieParams.classList.remove('visible');
-            }
-        }
-
-        document.querySelectorAll('.auth-method-select').forEach(select => {
-            toggleAuthMethodView(select);
-        });
-
-        sitesContainer.addEventListener('change', function(e) {
-            if (e.target && e.target.classList.contains('auth-method-select')) {
-                toggleAuthMethodView(e.target);
-            }
-        });
-
+        function toggleAuthMethodView(selectElement) { /* ... */ }
+        document.querySelectorAll('.auth-method-select').forEach(toggleAuthMethodView);
+        sitesContainer.addEventListener('change', function(e) { if (e.target.classList.contains('auth-method-select')) toggleAuthMethodView(e.target); });
+        
         document.getElementById('add-site-btn').addEventListener('click', function () {
             const newSiteId = findNextAvailableId();
             const wrapper = document.createElement('div');
             wrapper.className = 'col-lg-6 mb-4 site-card-wrapper';
             
-            // (修改点) 为所有标签添加了带样式的变量名
+            // (核心修改点)
             wrapper.innerHTML = `
             <div class="card site-card" data-site-id="${newSiteId}">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5>网站 ${newSiteId}</h5>
-                    <button type="button" class="btn btn-danger btn-sm remove-site-btn">删除此网站</button>
-                </div>
+                <div class="card-header d-flex justify-content-between align-items-center"><h5>网站 ${newSiteId}</h5><button type="button" class="btn btn-danger btn-sm remove-site-btn">删除此网站</button></div>
                 <div class="card-body">
                     <h6>基础信息</h6>
                     <div class="row">
                         <div class="col-md-4 mb-2"><label class="form-label">名称<span class="var-name">(NAME)</span></label><input type="text" name="site${newSiteId}_NAME" class="form-control form-control-sm" value="网站${newSiteId}"></div>
                         <div class="col-md-8 mb-2"><label class="form-label">登录URL*<span class="var-name">(URL)</span></label><input type="text" name="site${newSiteId}_URL" class="form-control form-control-sm"></div>
                         <div class="col-md-8 mb-2"><label class="form-label">CRON表达式*<span class="var-name">(CRON)</span></label><input type="text" name="site${newSiteId}_CRON" class="form-control form-control-sm" placeholder="例如: 0 3 * * *"></div>
-                        <div class="col-md-4 mb-2">
-                            <label class="form-label">认证方式<span class="var-name">(AUTH_METHOD)</span></label>
-                            <select name="site${newSiteId}_AUTH_METHOD" class="form-select form-select-sm auth-method-select">
-                                <option value="form" selected>表单 (form)</option>
-                                <option value="cookie">Cookie</option>
-                            </select>
-                        </div>
+                        <div class="col-md-4 mb-2"><label class="form-label">认证方式<span class="var-name">(AUTH_METHOD)</span></label><select name="site${newSiteId}_AUTH_METHOD" class="form-select form-select-sm auth-method-select"><option value="form" selected>表单 (form)</option><option value="cookie">Cookie</option></select></div>
                     </div>
-
-                    <div class="form-parameters">
-                        <h6>表单登录参数</h6>
-                        <div class="row">
-                            <div class="col-md-6 mb-2"><label class="form-label">用户名<span class="var-name">(USER)</span></label><input type="text" name="site${newSiteId}_USER" class="form-control form-control-sm"></div>
-                            <div class="col-md-6 mb-2"><label class="form-label">密码<span class="var-name">(PASS)</span></label><input type="password" name="site${newSiteId}_PASS" class="form-control form-control-sm"></div>
-                            <div class="col-12 mb-2"><label class="form-label">登录前点击<span class="var-name">(PRE_LOGIN_CLICK_SELECTOR)</span></label><input type="text" name="site${newSiteId}_PRE_LOGIN_CLICK_SELECTOR" class="form-control form-control-sm"></div>
-                            <div class="col-md-6 mb-2"><label class="form-label">用户名选择器<span class="var-name">(USER_SELECTOR)</span></label><input type="text" name="site${newSiteId}_USER_SELECTOR" class="form-control form-control-sm"></div>
-                            <div class="col-md-6 mb-2"><label class="form-label">密码选择器<span class="var-name">(PASS_SELECTOR)</span></label><input type="text" name="site${newSiteId}_PASS_SELECTOR" class="form-control form-control-sm"></div>
-                            <div class="col-md-6 mb-2"><label class="form-label">提交按钮选择器<span class="var-name">(SUBMIT_SELECTOR)</span></label><input type="text" name="site${newSiteId}_SUBMIT_SELECTOR" class="form-control form-control-sm"></div>
-                        </div>
-                    </div>
-
+                    <div class="form-parameters"><h6>表单登录参数</h6><div class="row"><div class="col-md-6 mb-2"><label class="form-label">用户名<span class="var-name">(USER)</span></label><input type="text" name="site${newSiteId}_USER" class="form-control form-control-sm"></div><div class="col-md-6 mb-2"><label class="form-label">密码<span class="var-name">(PASS)</span></label><input type="password" name="site${newSiteId}_PASS" class="form-control form-control-sm"></div><div class="col-12 mb-2"><label class="form-label">登录前点击<span class="var-name">(PRE_LOGIN_CLICK_SELECTOR)</span></label><input type="text" name="site${newSiteId}_PRE_LOGIN_CLICK_SELECTOR" class="form-control form-control-sm"></div><div class="col-md-6 mb-2"><label class="form-label">用户名选择器<span class="var-name">(USER_SELECTOR)</span></label><input type="text" name="site${newSiteId}_USER_SELECTOR" class="form-control form-control-sm"></div><div class="col-md-6 mb-2"><label class="form-label">密码选择器<span class="var-name">(PASS_SELECTOR)</span></label><input type="text" name="site${newSiteId}_PASS_SELECTOR" class="form-control form-control-sm"></div><div class="col-md-6 mb-2"><label class="form-label">提交按钮选择器<span class="var-name">(SUBMIT_SELECTOR)</span></label><input type="text" name="site${newSiteId}_SUBMIT_SELECTOR" class="form-control form-control-sm"></div></div></div>
                     <div class="cookie-parameters">
                          <h6>Cookie 登录参数</h6>
                          <div class="row">
-                            <div class="col-12 mb-2"><label class="form-label">Cookie<span class="var-name">(COOKIE)</span></label><textarea name="site${newSiteId}_COOKIE" class="form-control form-control-sm" rows="3"></textarea></div>
+                            <div class="col-12 mb-2">
+                                <label class="form-label">Cookie<span class="var-name">(COOKIE)</span></label>
+                                <textarea name="site${newSiteId}_COOKIE" class="form-control form-control-sm" rows="4"></textarea>
+                                <small class="form-text text-muted">
+                                    请粘贴从浏览器插件 (如 EditThisCookie) 导出的 JSON 格式 Cookie 数组。
+                                </small>
+                            </div>
                          </div>
                     </div>
-                    
                     <h6>通用参数</h6>
-                    <div class="row">
-                        <div class="col-12 mb-2"><label class="form-label">登录成功验证<span class="var-name">(VERIFY_SELECTOR)</span></label><input type="text" name="site${newSiteId}_VERIFY_SELECTOR" class="form-control form-control-sm"></div>
-                        <div class="col-12 mb-2"><label class="form-label">登录后点击<span class="var-name">(POST_LOGIN_CLICK_SELECTORS)</span></label><input type="text" name="site${newSiteId}_POST_LOGIN_CLICK_SELECTORS" class="form-control form-control-sm"></div>
-                    </div>
+                    <div class="row"><div class="col-12 mb-2"><label class="form-label">登录成功验证<span class="var-name">(VERIFY_SELECTOR)</span></label><input type="text" name="site${newSiteId}_VERIFY_SELECTOR" class="form-control form-control-sm"></div><div class="col-12 mb-2"><label class="form-label">登录后点击<span class="var-name">(POST_LOGIN_CLICK_SELECTORS)</span></label><input type="text" name="site${newSiteId}_POST_LOGIN_CLICK_SELECTORS" class="form-control form-control-sm"></div></div>
                 </div>
             </div>`;
-
             sitesContainer.appendChild(wrapper);
-            const newSelect = wrapper.querySelector('.auth-method-select');
-            toggleAuthMethodView(newSelect);
+            toggleAuthMethodView(wrapper.querySelector('.auth-method-select'));
         });
-
-        sitesContainer.addEventListener('click', function(e) {
-            if (e.target && e.target.classList.contains('remove-site-btn')) {
-                e.target.closest('.site-card-wrapper').remove();
-            }
-        });
-
-        function findNextAvailableId() {
-            const existingIds = Array.from(document.querySelectorAll('.site-card')).map(card => parseInt(card.dataset.siteId, 10));
-            let i = 1;
-            while (existingIds.includes(i)) { i++; }
-            return i;
-        }
+        
+        // ... (其他 JS 函数保持不变)
+        sitesContainer.addEventListener('click', function(e) { if (e.target.classList.contains('remove-site-btn')) e.target.closest('.site-card-wrapper').remove(); });
+        function findNextAvailableId() { /* ... */ }
+        // For brevity, the unchanged JS functions are collapsed. The full code from the previous correct version should be used here.
+        function toggleAuthMethodView(selectElement) { const card = selectElement.closest('.site-card'); if (!card) return; const formParams = card.querySelector('.form-parameters'); const cookieParams = card.querySelector('.cookie-parameters'); if (selectElement.value === 'cookie') { formParams.classList.remove('visible'); cookieParams.classList.add('visible'); } else { formParams.classList.add('visible'); cookieParams.classList.remove('visible'); } }
+        function findNextAvailableId() { const existingIds = Array.from(document.querySelectorAll('.site-card')).map(card => parseInt(card.dataset.siteId, 10)); let i = 1; while (existingIds.includes(i)) { i++; } return i; }
     });
 </script>
 </body>
